@@ -22,6 +22,7 @@
       gap: 20px;
       flex-wrap: wrap;
     }
+    /* Header */
     .header {
       background: rgba(255, 255, 255, 0.95);
       color: black;
@@ -78,6 +79,7 @@
     .controls button:hover {
       background: #0056b3;
     }
+    /* Search Bar */
     #global-search {
       width: 70%;
       max-width: 500px;
@@ -87,6 +89,7 @@
       font-size: 1em;
       margin: 10px 0;
     }
+    /* New Job Form */
     .new-booking {
       background: white;
       color: black;
@@ -132,6 +135,7 @@
     .new-booking button:hover {
       background: #218838;
     }
+    /* Weekly Schedule */
     .weekly-schedule {
       background: white;
       color: black;
@@ -235,6 +239,7 @@
       color: #aaa;
       font-style: italic;
     }
+    /* Modal */
     .modal {
       display: none;
       position: fixed;
@@ -317,6 +322,7 @@
       margin-bottom: 4px;
       font-weight: 600;
     }
+    /* Search Results */
     #search-results {
       display: none;
       position: fixed;
@@ -340,6 +346,7 @@
       border-bottom: 1px solid #ddd;
       padding-bottom: 10px;
     }
+    /* Print Receipt */
     @media print {
       body * {
         visibility: hidden;
@@ -366,6 +373,7 @@
         size: A4;
       }
     }
+    /* Password Screen */
     #password-screen {
       position: fixed;
       top: 0; left: 0;
@@ -700,7 +708,7 @@
       return res.ok;
     }
 
-    // ====== UI FUNCTIONS ======
+    // ====== UTILS ======
     function formatDate(date) {
       return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
     }
@@ -732,6 +740,7 @@
       return num.toString();
     }
 
+    // ====== UI FUNCTIONS ======
     function updateEarnings(bookings) {
       let total = 0;
       Object.keys(bookings).forEach(key => {
@@ -841,7 +850,14 @@
       try {
         const res = await fetch(API_BASE);
         const bookings = await res.json();
-        const job = bookings[dateKey][jobIndex];
+        const job = bookings[dateKey]?.[jobIndex];
+
+        if (!job) {
+          alert('Job not found or has been deleted.');
+          loadBookingsAndRender();
+          return;
+        }
+
         const jobDate = parseDate(dateKey);
         editingJob = { dateKey, jobIndex };
 
@@ -915,7 +931,10 @@
         const totalDue = parseFloat(job.price);
         const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
-        if (totalPaid >= totalDue) return alert('Already fully paid.');
+        if (totalPaid >= totalDue) {
+          alert('This job is already fully paid.');
+          return;
+        }
 
         const today = new Date();
         const todayStr = formatKey(today);
@@ -930,6 +949,8 @@
         if (success) {
           openEditModal(editingJob.dateKey, editingJob.jobIndex);
           alert('Marked as Paid in Full!');
+        } else {
+          alert('Failed to update job.');
         }
       } catch (err) {
         alert('Failed to update job.');
@@ -1064,35 +1085,55 @@
     // ====== PRINT RECEIPT ======
     function printReceipt() {
       if (!editingJob) return;
-      const job = editingJob.job;
-      const jobDate = parseDate(editingJob.dateKey);
-      const price = parseFloat(job.price).toFixed(2);
-      const jobDateFormatted = formatDate(jobDate);
-      const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-      const due = Math.max(0, parseFloat(price) - totalPaid).toFixed(2);
 
-      document.getElementById('print-invoice').textContent = job.invoiceNumber || 'N/A';
-      document.getElementById('print-date').textContent = jobDateFormatted;
-      document.getElementById('print-due-date').textContent = jobDateFormatted;
-      document.getElementById('print-customer').textContent = job.customer;
-      document.getElementById('print-address').innerHTML = (job.address || 'Not provided').replace(/\n/g, '<br>');
-      document.getElementById('print-reason').textContent = job.reason || 'Call out charge';
-      document.getElementById('print-unit-price').textContent = price;
-      document.getElementById('print-amount').textContent = price;
-      document.getElementById('print-total').textContent = price;
-      document.getElementById('print-paid-date').innerHTML = job.payments.map(p => `Paid £${p.amount} on ${p.date}<br>`).join('');
-      document.getElementById('print-due').textContent = due;
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) {
+            alert('Job not found. Cannot print.');
+            return;
+          }
 
-      document.getElementById('receipt').style.display = 'block';
-      window.print();
-      document.getElementById('receipt').style.display = 'none';
+          const jobDate = parseDate(editingJob.dateKey);
+          const price = parseFloat(job.price).toFixed(2);
+          const jobDateFormatted = formatDate(jobDate);
+          const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+          const due = Math.max(0, parseFloat(price) - totalPaid).toFixed(2);
+
+          document.getElementById('print-invoice').textContent = job.invoiceNumber || 'N/A';
+          document.getElementById('print-date').textContent = jobDateFormatted;
+          document.getElementById('print-due-date').textContent = jobDateFormatted;
+          document.getElementById('print-customer').textContent = job.customer;
+          document.getElementById('print-address').innerHTML = (job.address || 'Not provided').replace(/\n/g, '<br>');
+          document.getElementById('print-reason').textContent = job.reason || 'Call out charge';
+          document.getElementById('print-unit-price').textContent = price;
+          document.getElementById('print-amount').textContent = price;
+          document.getElementById('print-total').textContent = price;
+
+          const paidItems = (job.payments || [])
+            .map(p => `Paid £${parseFloat(p.amount).toFixed(2)} on ${formatDate(parseDate(p.date))}`)
+            .join('<br>');
+
+          document.getElementById('print-paid-date').innerHTML = paidItems ? `<p><strong>Payments:</strong></p>${paidItems}` : '';
+          document.getElementById('print-due').textContent = due;
+
+          document.getElementById('receipt').style.display = 'block';
+          window.print();
+          document.getElementById('receipt').style.display = 'none';
+        })
+        .catch(() => {
+          alert('Failed to load job data for printing.');
+        });
     }
 
     // ====== INIT ON LOAD ======
     window.onload = function() {
       const savedHash = localStorage.getItem('calendarPassword');
-      document.getElementById('password-confirm').style.display = savedHash ? 'none' : 'block';
-      document.getElementById('setup-prompt').textContent = savedHash
+      const passwordConfirm = document.getElementById('password-confirm');
+      const setupPrompt = document.getElementById('setup-prompt');
+      passwordConfirm.style.display = savedHash ? 'none' : 'block';
+      setupPrompt.textContent = savedHash
         ? 'Enter your password to unlock the calendar.'
         : 'Set a new password to secure your calendar.';
       document.getElementById('password-screen').style.display = 'flex';
