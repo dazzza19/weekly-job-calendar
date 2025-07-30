@@ -539,7 +539,7 @@
           <button class="btn-paid-full" onclick="markPaidInFull()">Paid in Full</button>
         </div>
         <div class="modal-footer">
-          <button class="btn-print" onclick="openPrintPreview()">Print Preview</button>
+          <button class="btn-print" onclick="printReceipt()">Print Invoice</button>
           <button class="btn-delete" onclick="deleteJob()">Delete Job</button>
           <button class="btn-cancel" onclick="closeModal()">Close</button>
         </div>
@@ -558,26 +558,7 @@
     </div>
   </div>
 
-  <!-- Print Preview Modal -->
-  <div id="preview-modal" class="modal">
-    <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
-      <div class="modal-header">
-        <h3>Print Preview</h3>
-        <span class="close-modal" onclick="closePreviewModal()">&times;</span>
-      </div>
-      <div class="modal-body">
-        <div id="preview-receipt" style="background:white; color:black; padding:20px; font-family:Arial,sans-serif;">
-          <!-- Receipt will be injected here -->
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-print" onclick="triggerPrint()">Print</button>
-        <button class="btn-cancel" onclick="closePreviewModal()">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Hidden Receipt for Printing (fallback) -->
+  <!-- Hidden Receipt for Printing -->
   <div id="receipt" style="display:none;">
     <table width="100%" style="font-family:Arial, sans-serif; font-size:12px; color: #000;">
       <tr>
@@ -932,7 +913,8 @@
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
           amountInput.value = '';
-          openEditModal(editingJob.dateKey, editingJob.jobIndex);
+          closeModal();
+          await loadBookingsAndRender();
         } else {
           alert('Failed to save payment.');
         }
@@ -966,7 +948,8 @@
 
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
-          openEditModal(editingJob.dateKey, editingJob.jobIndex);
+          closeModal();
+          await loadBookingsAndRender();
           alert('Marked as Paid in Full!');
         } else {
           alert('Failed to update job.');
@@ -981,7 +964,7 @@
       const success = await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
       if (success) {
         closeModal();
-        loadBookingsAndRender();
+        await loadBookingsAndRender();
       } else {
         alert('Failed to delete job.');
       }
@@ -1027,7 +1010,7 @@
         document.getElementById('job-date').value = formatKey(new Date());
         alert('Job added successfully!');
         currentWeekStart = getWeekStart(jobDate);
-        loadBookingsAndRender();
+        await loadBookingsAndRender();
       } else {
         alert('Failed to add job.');
       }
@@ -1101,20 +1084,16 @@
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
 
-    // ====== PRINT PREVIEW & PRINT (Mobile-Friendly) ======
-    function openPrintPreview() {
+    // ====== PRINT RECEIPT (Mobile-Friendly) ======
+    function printReceipt() {
       if (!editingJob) return;
-
-      const previewModal = document.getElementById('preview-modal');
-      const previewDiv = document.getElementById('preview-receipt');
-      previewDiv.innerHTML = 'Loading...';
 
       fetch(API_BASE)
         .then(res => res.json())
         .then(bookings => {
           const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
           if (!job) {
-            previewDiv.innerHTML = '<p style="color:red;">Job not found.</p>';
+            alert('Job not found. Cannot print.');
             return;
           }
 
@@ -1128,103 +1107,88 @@
             .map(p => `Paid £${parseFloat(p.amount).toFixed(2)} on ${formatDate(parseDate(p.date))}`)
             .join('<br>');
 
-          previewDiv.innerHTML = `
-            <table width="100%" style="font-family:Arial, sans-serif; font-size:12px; color: #000;">
-              <tr>
-                <td width="30%">
-                  <img src="https://acaciatv.netlify.app/assets/images/logo.svg" alt="Logo" style="height:60px;" /><br>
-                  <strong>Acacia TV</strong><br>
-                  Filer Road, Halfway<br>
-                  Sheerness, Kent, ME12 3AL<br>
-                  United Kingdom<br>
-                  <strong>01795 873160</strong><br>
-                  acaciatv@hotmail.co.uk<br>
-                  <a href="https://acaciatv.netlify.app" style="color:#000; text-decoration:underline;">https://acaciatv.netlify.app</a>
-                </td>
-                <td width="70%" align="right">
-                  <h2 style="margin:0; color:#000;">Invoice ${job.invoiceNumber || 'N/A'}</h2>
-                  <table style="margin-top:10px; color:#000;">
-                    <tr>
-                      <td align="right"><strong>Invoice Date:</strong></td>
-                      <td>${jobDateFormatted}</td>
-                    </tr>
-                    <tr>
-                      <td align="right"><strong>Due Date:</strong></td>
-                      <td>${jobDateFormatted}</td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-            <table width="100%" style="margin:20px 0; font-size:12px; color:#000;">
-              <tr>
-                <td width="50%">
-                  <strong>Billed To:</strong><br>
-                  ${job.customer || 'Unknown Customer'}<br>
-                  ${(job.address || 'Not provided').replace(/\n/g, '<br>') || 'No address'}
-                </td>
-                <td width="50%"></td>
-              </tr>
-            </table>
-            <table width="100%" border="1" style="border-collapse:collapse; margin:20px 0; font-size:12px; color:#000;">
-              <thead>
-                <tr style="background:#f0f0f0;">
-                  <th align="left" style="padding:8px;">Description</th>
-                  <th align="center" style="padding:8px;">Quantity</th>
-                  <th align="right" style="padding:8px;">Unit Price</th>
-                  <th align="right" style="padding:8px;">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="padding:8px;">${job.reason || 'Call out charge'}</td>
-                  <td align="center" style="padding:8px;">1.00</td>
-                  <td align="right" style="padding:8px;">£${price}</td>
-                  <td align="right" style="padding:8px;">£${price}</td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colspan="3" align="right" style="padding:8px;"><strong>Total:</strong></td>
-                  <td align="right" style="padding:8px;"><strong>£${price}</strong></td>
-                </tr>
-              </tfoot>
-            </table>
-            <div style="color:#000;">
-              ${paidItems ? `<p><strong>Payments:</strong></p>${paidItems}` : ''}
-            </div>
-            <p style="color:#000;"><strong>Amount Due:</strong> £${due}</p>
+          const printHtml = `
+            <html>
+            <head>
+              <title>Invoice ${job.invoiceNumber || 'N/A'}</title>
+              <style>
+                body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
+                .header { display: flex; justify-content: space-between; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+                .logo { height: 60px; }
+                table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                td, th { padding: 8px; text-align: left; border: 1px solid #ddd; }
+                .total { font-weight: bold; font-size: 1.2em; }
+                @media print {
+                  @page { margin: 15mm; }
+                  .no-print { display: none; }
+                }
+              </style>
+            </head>
+            <body onload="window.print();">
+              <div class="header">
+                <div>
+                  <img src="https://acaciatv.netlify.app/assets/images/logo.svg" class="logo" alt="Logo" />
+                  <h2>Invoice ${job.invoiceNumber || 'N/A'}</h2>
+                </div>
+                <div>
+                  <p><strong>Date:</strong> ${jobDateFormatted}</p>
+                </div>
+              </div>
+
+              <h3>Billed To</h3>
+              <p>
+                <strong>${job.customer}</strong><br>
+                ${job.address?.replace(/\n/g, '<br>') || 'Not provided'}<br>
+                ${job.phone || 'No phone'}
+              </p>
+
+              <table>
+                <thead>
+                  <tr style="background:#f0f0f0;">
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>${job.reason || 'Call out charge'}</td>
+                    <td>1</td>
+                    <td>£${price}</td>
+                    <td>£${price}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="3" align="right" class="total">Total</td>
+                    <td class="total">£${price}</td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              <h4>Payments</h4>
+              <div>${paidItems || 'No payments recorded.'}</div>
+
+              <p><strong>Amount Due:</strong> £${due}</p>
+
+              <button class="no-print" onclick="window.close()" style="margin-top:20px;">Close</button>
+            </body>
+            </html>
           `;
+
+          const printWindow = window.open('', '_blank');
+          if (!printWindow) {
+            alert('Please allow popups for this site to print.');
+            return;
+          }
+          printWindow.document.write(printHtml);
+          printWindow.document.close();
         })
-        .catch(() => {
-          document.getElementById('preview-receipt').innerHTML = '<p style="color:red;">Failed to load job data.</p>';
+        .catch(err => {
+          console.error('Print error:', err);
+          alert('There was a problem printing. Please try again.');
         });
-
-      previewModal.style.display = 'flex';
-    }
-
-    function closePreviewModal() {
-      document.getElementById('preview-modal').style.display = 'none';
-    }
-
-    function triggerPrint() {
-      const receiptDiv = document.getElementById('preview-receipt');
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Print Invoice</title>
-            <style>
-              @page { margin: 0; size: A4; }
-              body { margin: 0; padding: 15mm; box-sizing: border-box; }
-            </style>
-          </head>
-          <body onload="window.print(); window.close();">
-            ${receiptDiv.innerHTML}
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
     }
 
     // ====== INIT ON LOAD ======
