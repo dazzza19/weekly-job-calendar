@@ -364,6 +364,7 @@
         margin: 0;
         padding: 15mm;
         box-sizing: border-box;
+        background: white;
       }
       .no-print {
         display: none !important;
@@ -907,8 +908,7 @@
 
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
-          amountInput.value = '';
-          loadBookingsAndRender(); // ✅ Full refresh to update UI
+          loadBookingsAndRender(); // ✅ Full refresh to update both modal and calendar
         } else {
           alert('Failed to save payment.');
         }
@@ -1075,9 +1075,10 @@
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
 
-    // ====== PRINT RECEIPT (FIXED FOR SAMSUNG GALAXY A21s) ======
+    // ====== PRINT RECEIPT (FIXED FOR ALL DEVICES) ======
     function printReceipt() {
       if (!editingJob) return;
+
       fetch(API_BASE)
         .then(res => res.json())
         .then(bookings => {
@@ -1086,6 +1087,7 @@
             alert('Job not found. Cannot print.');
             return;
           }
+
           const jobDate = parseDate(editingJob.dateKey);
           const price = parseFloat(job.price).toFixed(2);
           const jobDateFormatted = formatDate(jobDate);
@@ -1109,22 +1111,27 @@
           document.getElementById('print-paid-date').innerHTML = paidItems ? `<p><strong>Payments:</strong></p>${paidItems}` : '';
           document.getElementById('print-due').textContent = due;
 
-          // === RELIABLE PRINT FIX FOR MOBILE DEVICES ===
+          // === RELIABLE PRINT FIX ===
           const receipt = document.getElementById('receipt');
           receipt.style.visibility = 'visible';
           receipt.style.position = 'absolute';
-          receipt.style.left = '-9999px';
+          receipt.style.left = '0';
           receipt.style.top = '0';
+          receipt.style.width = '210mm';
+          receipt.style.height = '297mm';
 
           // Force reflow
           void receipt.offsetHeight;
 
           setTimeout(() => {
             window.print();
+
+            // Hide after print
             setTimeout(() => {
               receipt.style.visibility = 'hidden';
-            }, 1000);
-          }, 500);
+              receipt.style.left = '-9999px';
+            }, 500);
+          }, 300);
         })
         .catch(() => {
           alert('Failed to load job data for printing.');
