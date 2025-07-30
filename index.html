@@ -449,7 +449,6 @@
     <input type="password" id="password-confirm" placeholder="Confirm password" style="display:none;" />
     <button onclick="window.checkPassword()">Unlock</button>
   </div>
-
   <!-- Main App -->
   <div id="main-app" class="no-print" style="display:none;">
     <div class="container">
@@ -461,7 +460,7 @@
           </div>
           <div style="flex: 1; margin-left: 20px; min-width: 250px;">
             <div class="earnings">
-              This Week's Paid Earnings: <span id="total-earnings">£0.00</span>
+              This Week's Payments Received: <span id="total-earnings">£0.00</span>
             </div>
             <input type="text" id="global-search" placeholder="🔍 Search by name, address, or phone..." />
             <div class="controls">
@@ -472,7 +471,6 @@
           </div>
         </div>
       </div>
-
       <!-- New Job Form -->
       <div class="new-booking">
         <h2>New Job Booking</h2>
@@ -498,7 +496,6 @@
           <button type="submit">Add Job</button>
         </form>
       </div>
-
       <!-- Weekly Schedule -->
       <div class="weekly-schedule">
         <h2>Weekly Schedule</h2>
@@ -507,7 +504,6 @@
         </div>
       </div>
     </div>
-
     <!-- Edit Job Modal -->
     <div id="edit-modal" class="modal">
       <div class="modal-content">
@@ -536,7 +532,7 @@
             <input type="date" id="payment-date" />
           </div>
           <button class="btn-add-payment" onclick="addPayment()">Add Payment</button>
-          <button class="btn-paid-full" onclick="markPaidInFull()">Paid in Full</button>
+          <button class="btn-paid-full" onclick="markPaidInFull()">Set as Paid in Full</button>
         </div>
         <div class="modal-footer">
           <button class="btn-print" onclick="printReceipt()">Print Receipt</button>
@@ -545,7 +541,6 @@
         </div>
       </div>
     </div>
-
     <!-- Search Results -->
     <div id="search-results">
       <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
@@ -557,27 +552,22 @@
       </div>
     </div>
   </div>
-
   <!-- Hidden Receipt for Printing -->
   <div id="receipt" style="display:none;"></div>
-
   <script>
     // ====== API CONFIG ======
     const API_BASE = 'https://weekly-job-calendar.netlify.app/.netlify/functions/bookings';
-    
     // ====== STATE ======
     let currentWeekStart = new Date();
     currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay() + (currentWeekStart.getDay() === 0 ? -6 : 1));
     currentWeekStart.setHours(0, 0, 0, 0);
     let editingJob = null;
-
     // ====== PASSWORD SYSTEM ======
     window.checkPassword = function() {
       const passwordInput = document.getElementById('password-input');
       const passwordConfirm = document.getElementById('password-confirm');
       const password = passwordInput.value.trim();
       const savedHash = localStorage.getItem('calendarPassword');
-      
       if (!savedHash) {
         // First-time setup
         const confirm = passwordConfirm.value.trim();
@@ -596,26 +586,22 @@
         }
       }
     };
-
     function showMainApp() {
       document.getElementById('password-screen').style.display = 'none';
       document.getElementById('main-app').style.display = 'block';
       loadBookingsAndRender();
     }
-
     // ====== DATABASE CALLS ======
     async function loadBookingsAndRender() {
       try {
         const res = await fetch(API_BASE);
         const bookings = await res.json();
         renderWeek(bookings);
-        updateEarnings(bookings);
       } catch (err) {
         console.error('Failed to load data:', err);
         alert('Could not connect to database.');
       }
     }
-
     async function addJobToDB(dateKey, job) {
       const res = await fetch(API_BASE, {
         method: 'POST',
@@ -624,7 +610,6 @@
       });
       return res.ok;
     }
-
     async function updateJobInDB(dateKey, jobIndex, job) {
       const res = await fetch(API_BASE, {
         method: 'POST',
@@ -633,7 +618,6 @@
       });
       return res.ok;
     }
-
     async function deleteJobFromDB(dateKey, jobIndex) {
       const res = await fetch(API_BASE, {
         method: 'POST',
@@ -642,24 +626,20 @@
       });
       return res.ok;
     }
-
     // ====== UTILS ======
     function formatDate(date) {
       return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
     }
-
     function formatKey(date) {
       const d = String(date.getDate()).padStart(2, '0');
       const m = String(date.getMonth() + 1).padStart(2, '0');
       const y = date.getFullYear();
       return `${y}-${m}-${d}`;
     }
-
     function parseDate(dateStr) {
       const [y, m, d] = dateStr.split('-').map(Number);
       return new Date(y, m - 1, d);
     }
-
     function getWeekStart(date) {
       const d = new Date(date);
       const day = d.getDay();
@@ -668,31 +648,24 @@
       d.setHours(0, 0, 0, 0);
       return d;
     }
-
     function getNextInvoiceNumber() {
       const num = parseInt(localStorage.getItem('nextInvoiceNumber') || '10001');
       localStorage.setItem('nextInvoiceNumber', (num + 1).toString());
       return num.toString();
     }
-
     // ====== UI FUNCTIONS ======
-    function updateEarnings(bookings) {
-      let total = 0;
-      Object.keys(bookings).forEach(key => {
-        bookings[key].forEach(job => {
-          const paid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-          total += paid;
-        });
-      });
-      document.getElementById('total-earnings').textContent = `£${total.toFixed(2)}`;
-    }
-
     function renderWeek(bookings = {}) {
       const daysGrid = document.getElementById('days-grid');
       if (!daysGrid) return;
       daysGrid.innerHTML = '';
       const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       let totalEarnings = 0;
+
+      // Get week range
+      const weekStart = new Date(currentWeekStart);
+      const weekEnd = new Date(currentWeekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
 
       days.forEach((dayName, i) => {
         const dayDate = new Date(currentWeekStart);
@@ -701,24 +674,28 @@
         const dayFormatted = formatDate(dayDate);
         const dayBookings = bookings[dayKey] || [];
 
-        dayBookings.forEach(job => {
-          const paid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-          totalEarnings += paid;
-        });
-
         const dayEl = document.createElement('div');
         dayEl.className = 'day';
 
         const jobsHtml = dayBookings.length > 0
           ? dayBookings.map((job, index) => {
+              // Sum only payments made **this week**
+              const thisWeekPayments = (job.payments || [])
+                .filter(p => {
+                  const pDate = parseDate(p.date);
+                  return pDate >= weekStart && pDate <= weekEnd;
+                })
+                .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+              totalEarnings += thisWeekPayments;
+
               const totalDue = parseFloat(job.price) || 0;
-              const paid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-              const isPaid = paid >= totalDue;
-              const isPartial = paid > 0 && paid < totalDue;
+              const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+              const isPaid = totalPaid >= totalDue;
+              const isPartial = totalPaid > 0 && totalPaid < totalDue;
+
               let statusText = 'Unpaid';
               let statusClass = 'status-unpaid';
               let jobClass = 'job-unpaid';
-
               if (isPaid) {
                 statusText = 'Paid';
                 statusClass = 'status-paid';
@@ -732,7 +709,7 @@
               return `
                 <div class="job-item ${jobClass}" onclick="event.stopPropagation(); openEditModal('${dayKey}', ${index});">
                   <div class="job-customer">${job.customer}</div>
-                  <div class="job-price">£${paid.toFixed(2)} / £${totalDue.toFixed(2)}</div>
+                  <div class="job-price">£${totalPaid.toFixed(2)} / £${totalDue.toFixed(2)}</div>
                   <span class="job-status ${statusClass}">${statusText}</span>
                   <div class="job-assigned">→ ${job.assigned}</div>
                 </div>
@@ -747,7 +724,6 @@
             ${jobsHtml}
           </div>
         `;
-
         dayEl.onclick = () => {
           if (dayBookings.length === 1) {
             openEditModal(dayKey, 0);
@@ -755,11 +731,11 @@
             alert('Multiple jobs. Click on a specific job.');
           }
         };
-
         daysGrid.appendChild(dayEl);
       });
 
       document.getElementById('total-earnings').textContent = `£${totalEarnings.toFixed(2)}`;
+
       const start = formatDate(currentWeekStart);
       const end = new Date(currentWeekStart);
       end.setDate(end.getDate() + 6);
@@ -776,7 +752,6 @@
       currentWeekStart.setDate(currentWeekStart.getDate() - 7);
       loadBookingsAndRender();
     }
-
     function nextWeek() {
       currentWeekStart.setDate(currentWeekStart.getDate() + 7);
       loadBookingsAndRender();
@@ -798,19 +773,16 @@
         document.getElementById('modal-date').textContent = formatDate(jobDate);
         document.getElementById('modal-total').textContent = parseFloat(job.price).toFixed(2);
         document.getElementById('modal-assigned').textContent = job.assigned;
-
         if (!job.payments) job.payments = [];
         const totalPaid = job.payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
         const outstanding = (parseFloat(job.price) || 0) - totalPaid;
         document.getElementById('modal-paid').textContent = totalPaid.toFixed(2);
         document.getElementById('modal-outstanding').textContent = outstanding.toFixed(2);
         document.getElementById('modal-invoice').textContent = job.invoiceNumber || 'N/A';
-
         const paymentList = document.getElementById('payment-list');
         paymentList.innerHTML = job.payments.length > 0
           ? job.payments.map(p => `<div class="payment-item">£${parseFloat(p.amount).toFixed(2)} on ${p.date}</div>`).join('')
           : '<div class="payment-item">No payments recorded</div>';
-
         const today = new Date();
         document.getElementById('payment-date').value = formatKey(today);
         document.getElementById('edit-modal').style.display = 'flex';
@@ -829,20 +801,17 @@
       const dateInput = document.getElementById('payment-date');
       const amount = parseFloat(amountInput.value);
       const date = dateInput.value;
-
       if (isNaN(amount) || amount <= 0) return alert('Please enter a valid payment amount.');
       if (!date) return alert('Please select a payment date.');
-
       try {
         const res = await fetch(API_BASE);
         const bookings = await res.json();
         const job = bookings[editingJob.dateKey][editingJob.jobIndex];
         if (!job.payments) job.payments = [];
         job.payments.push({ amount: amount.toFixed(2), date });
-
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
-          loadBookingsAndRender(); // ✅ Full refresh
+          loadBookingsAndRender();
         } else {
           alert('Failed to save payment.');
         }
@@ -853,30 +822,30 @@
 
     async function markPaidInFull() {
       if (!editingJob) return;
-
       try {
         const res = await fetch(API_BASE);
         const bookings = await res.json();
         const job = bookings[editingJob.dateKey][editingJob.jobIndex];
         const totalDue = parseFloat(job.price);
         const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-
         if (totalPaid >= totalDue) {
           alert('This job is already fully paid.');
           return;
         }
-
-        const today = new Date();
-        const todayStr = formatKey(today);
+        const dateInput = document.getElementById('payment-date').value;
+        if (!dateInput) {
+          alert('Please select a payment date.');
+          return;
+        }
+        const remaining = totalDue - totalPaid;
         if (!job.payments) job.payments = [];
         job.payments.push({
-          amount: (totalDue - totalPaid).toFixed(2),
-          date: todayStr
+          amount: remaining.toFixed(2),
+          date: dateInput
         });
-
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
-          loadBookingsAndRender(); // ✅ Full refresh
+          loadBookingsAndRender();
           alert('Marked as Paid in Full!');
         } else {
           alert('Failed to update job.');
@@ -906,18 +875,15 @@
       const reason = document.getElementById('reason').value.trim();
       const price = document.getElementById('price').value.trim();
       const assigned = document.getElementById('assigned').value;
-
       if (!customer || !assigned || !jobDateStr || !price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
         alert('Please fill in all required fields with valid data.');
         return;
       }
-
       const jobDate = parseDate(jobDateStr);
       if (isNaN(jobDate.getTime())) {
         alert('Invalid date format.');
         return;
       }
-
       const dayKey = formatKey(jobDate);
       const newJob = {
         customer,
@@ -930,7 +896,6 @@
         invoiceNumber: getNextInvoiceNumber(),
         timestamp: new Date().toISOString()
       };
-
       const success = await addJobToDB(dayKey, newJob);
       if (success) {
         this.reset();
@@ -998,21 +963,18 @@
         document.getElementById('search-results').style.display = 'block';
       }
     });
-
     function closeSearchResults() {
       document.getElementById('search-results').style.display = 'none';
     }
-
     document.addEventListener('click', (e) => {
       const results = document.getElementById('search-results');
       const input = document.getElementById('global-search');
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
 
-    // ====== PRINT RECEIPT (FULLY FIXED FOR ANDROID) ======
+    // ====== PRINT RECEIPT ======
     function printReceipt() {
       if (!editingJob) return;
-
       fetch(API_BASE)
         .then(res => res.json())
         .then(bookings => {
@@ -1021,18 +983,14 @@
             alert('Job not found. Cannot print.');
             return;
           }
-
           const jobDate = parseDate(editingJob.dateKey);
           const price = parseFloat(job.price).toFixed(2);
           const jobDateFormatted = formatDate(jobDate);
           const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
           const due = Math.max(0, parseFloat(price) - totalPaid).toFixed(2);
-
           const paidItems = (job.payments || [])
             .map(p => `Paid £${parseFloat(p.amount).toFixed(2)} on ${formatDate(parseDate(p.date))}`)
             .join('<br>');
-
-          // Generate full HTML for new tab
           const printContent = `
             <!DOCTYPE html>
             <html>
@@ -1058,7 +1016,6 @@
               <div class="logo">
                 <img src="https://acaciatv.netlify.app/assets/images/logo.svg" alt="Logo" />
               </div>
-
               <table>
                 <tr>
                   <td width="30%">
@@ -1079,7 +1036,6 @@
                   </td>
                 </tr>
               </table>
-
               <table>
                 <tr>
                   <td width="50%">
@@ -1090,7 +1046,6 @@
                   <td width="50%"></td>
                 </tr>
               </table>
-
               <table class="bordered">
                 <thead style="background:#f0f0f0;">
                   <tr>
@@ -1115,16 +1070,12 @@
                   </tr>
                 </tfoot>
               </table>
-
               ${paidItems ? `<div class="mt-20"><p><strong>Payments:</strong></p>${paidItems}</div>` : ''}
-
               <p class="mt-20"><strong>Amount Due:</strong> £${due}</p>
-
               <div class="footer">Page 1 / 1</div>
             </body>
             </html>
           `;
-
           const printWindow = window.open('', '_blank');
           printWindow.document.write(printContent);
           printWindow.document.close();
