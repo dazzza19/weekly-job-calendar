@@ -913,8 +913,7 @@
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
           amountInput.value = '';
-          closeModal();
-          await loadBookingsAndRender();
+          openEditModal(editingJob.dateKey, editingJob.jobIndex);
         } else {
           alert('Failed to save payment.');
         }
@@ -948,8 +947,7 @@
 
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
-          closeModal();
-          await loadBookingsAndRender();
+          openEditModal(editingJob.dateKey, editingJob.jobIndex);
           alert('Marked as Paid in Full!');
         } else {
           alert('Failed to update job.');
@@ -964,7 +962,7 @@
       const success = await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
       if (success) {
         closeModal();
-        await loadBookingsAndRender();
+        loadBookingsAndRender();
       } else {
         alert('Failed to delete job.');
       }
@@ -1010,7 +1008,7 @@
         document.getElementById('job-date').value = formatKey(new Date());
         alert('Job added successfully!');
         currentWeekStart = getWeekStart(jobDate);
-        await loadBookingsAndRender();
+        loadBookingsAndRender();
       } else {
         alert('Failed to add job.');
       }
@@ -1084,7 +1082,7 @@
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
 
-    // ====== PRINT RECEIPT (Mobile-Friendly, Auto-Close) ======
+    // ====== PRINT RECEIPT (Mobile-Friendly) ======
     function printReceipt() {
       if (!editingJob) return;
 
@@ -1103,97 +1101,37 @@
           const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
           const due = Math.max(0, parseFloat(price) - totalPaid).toFixed(2);
 
+          document.getElementById('print-invoice').textContent = job.invoiceNumber || 'N/A';
+          document.getElementById('print-date').textContent = jobDateFormatted;
+          document.getElementById('print-due-date').textContent = jobDateFormatted;
+          document.getElementById('print-customer').textContent = job.customer;
+          document.getElementById('print-address').innerHTML = (job.address || 'Not provided').replace(/\n/g, '<br>');
+          document.getElementById('print-reason').textContent = job.reason || 'Call out charge';
+          document.getElementById('print-unit-price').textContent = price;
+          document.getElementById('print-amount').textContent = price;
+          document.getElementById('print-total').textContent = price;
+
           const paidItems = (job.payments || [])
             .map(p => `Paid £${parseFloat(p.amount).toFixed(2)} on ${formatDate(parseDate(p.date))}`)
             .join('<br>');
 
-          const printHtml = `
-            <html>
-            <head>
-              <title>Invoice ${job.invoiceNumber || 'N/A'}</title>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
-                .header { display: flex; justify-content: space-between; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
-                .logo { height: 60px; }
-                table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-                td, th { padding: 8px; text-align: left; border: 1px solid #ddd; }
-                .total { font-weight: bold; font-size: 1.2em; }
-                @media print {
-                  @page { margin: 15mm; }
-                  .no-print { display: none; }
-                }
-              </style>
-            </head>
-            <body>
-              <div class="header">
-                <div>
-                  <img src="https://acaciatv.netlify.app/assets/images/logo.svg" class="logo" alt="Logo" />
-                  <h2>Invoice ${job.invoiceNumber || 'N/A'}</h2>
-                </div>
-                <div>
-                  <p><strong>Date:</strong> ${jobDateFormatted}</p>
-                </div>
-              </div>
+          document.getElementById('print-paid-date').innerHTML = paidItems ? `<p><strong>Payments:</strong></p>${paidItems}` : '';
+          document.getElementById('print-due').textContent = due;
 
-              <h3>Billed To</h3>
-              <p>
-                <strong>${job.customer}</strong><br>
-                ${job.address?.replace(/\n/g, '<br>') || 'Not provided'}<br>
-                ${job.phone || 'No phone'}
-              </p>
+          // Mobile print fix
+          const receipt = document.getElementById('receipt');
+          receipt.style.display = 'block';
+          receipt.style.visibility = 'hidden';
+          receipt.offsetHeight; // Force reflow
 
-              <table>
-                <thead>
-                  <tr style="background:#f0f0f0;">
-                    <th>Description</th>
-                    <th>Qty</th>
-                    <th>Unit Price</th>
-                    <th>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>${job.reason || 'Call out charge'}</td>
-                    <td>1</td>
-                    <td>£${price}</td>
-                    <td>£${price}</td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="3" align="right" class="total">Total</td>
-                    <td class="total">£${price}</td>
-                  </tr>
-                </tfoot>
-              </table>
-
-              <h4>Payments</h4>
-              <div>${paidItems || 'No payments recorded.'}</div>
-
-              <p><strong>Amount Due:</strong> £${due}</p>
-
-              <button class="no-print" onclick="window.close()" style="margin-top:20px;">Close</button>
-              <script type="text/javascript">
-                setTimeout(() => {
-                  window.print();
-                  window.onafterprint = () => setTimeout(window.close, 500);
-                }, 500);
-              </script>
-            </body>
-            </html>
-          `;
-
-          const printWindow = window.open('', '_blank');
-          if (!printWindow) {
-            alert('Please allow popups for this site to print.');
-            return;
-          }
-          printWindow.document.write(printHtml);
-          printWindow.document.close();
+          setTimeout(() => {
+            receipt.style.visibility = 'visible';
+            window.print();
+            receipt.style.display = 'none';
+          }, 150);
         })
-        .catch(err => {
-          console.error('Print error:', err);
-          alert('There was a problem printing. Please try again.');
+        .catch(() => {
+          alert('Failed to load job data for printing.');
         });
     }
 
