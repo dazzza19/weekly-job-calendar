@@ -364,7 +364,6 @@
         margin: 0;
         padding: 15mm;
         box-sizing: border-box;
-        background: white;
       }
       .no-print {
         display: none !important;
@@ -560,72 +559,7 @@
   </div>
 
   <!-- Hidden Receipt for Printing -->
-  <div id="receipt" style="visibility: hidden; position: absolute; left: -9999px;">
-    <table width="100%" style="font-family:Arial, sans-serif; font-size:12px; color: #000;">
-      <tr>
-        <td width="30%">
-          <img src="https://acaciatv.netlify.app/assets/images/logo.svg" alt="Logo" style="height:60px;" /><br>
-          <strong>Acacia TV</strong><br>
-          Filer Road, Halfway<br>
-          Sheerness, Kent, ME12 3AL<br>
-          United Kingdom<br>
-          <strong>01795 873160</strong><br>
-          acaciatv@hotmail.co.uk<br>
-          <a href="https://acaciatv.netlify.app" style="color:#000; text-decoration:underline;">https://acaciatv.netlify.app</a>
-        </td>
-        <td width="70%" align="right">
-          <h2 style="margin:0; color:#000;">Invoice <span id="print-invoice">10001</span></h2>
-          <table style="margin-top:10px; color:#000;">
-            <tr>
-              <td align="right"><strong>Invoice Date:</strong></td>
-              <td><span id="print-date">26/03/2025</span></td>
-            </tr>
-            <tr>
-              <td align="right"><strong>Due Date:</strong></td>
-              <td><span id="print-due-date">26/03/2025</span></td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-    <table width="100%" style="margin:20px 0; font-size:12px; color:#000;">
-      <tr>
-        <td width="50%">
-          <strong>Billed To:</strong><br>
-          <span id="print-customer">darren</span><br>
-          <span id="print-address">Not provided</span>
-        </td>
-        <td width="50%"></td>
-      </tr>
-    </table>
-    <table width="100%" border="1" style="border-collapse:collapse; margin:20px 0; font-size:12px; color:#000;">
-      <thead>
-        <tr style="background:#f0f0f0;">
-          <th align="left" style="padding:8px;">Description</th>
-          <th align="center" style="padding:8px;">Quantity</th>
-          <th align="right" style="padding:8px;">Unit Price</th>
-          <th align="right" style="padding:8px;">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding:8px;"><span id="print-reason">Call out charge</span></td>
-          <td align="center" style="padding:8px;">1.00</td>
-          <td align="right" style="padding:8px;">£<span id="print-unit-price">1.00</span></td>
-          <td align="right" style="padding:8px;">£<span id="print-amount">1.00</span></td>
-        </tr>
-      </tbody>
-      <tfoot>
-        <tr>
-          <td colspan="3" align="right" style="padding:8px;"><strong>Total:</strong></td>
-          <td align="right" style="padding:8px;"><strong>£<span id="print-total">1.00</span></strong></td>
-        </tr>
-      </tfoot>
-    </table>
-    <div id="print-paid-date" style="color:#000;"></div>
-    <p style="color:#000;"><strong>Amount Due:</strong> £<span id="print-due">1.00</span></p>
-    <div style="position:absolute; bottom:15mm; right:15mm; font-size:10pt; color:#000;">Page 1 / 1</div>
-  </div>
+  <div id="receipt" style="display:none;"></div>
 
   <script>
     // ====== API CONFIG ======
@@ -1075,7 +1009,7 @@
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
 
-    // ====== PRINT RECEIPT (FULLY FIXED FOR GALAXY A21s) ======
+    // ====== PRINT RECEIPT (FULLY FIXED FOR ANDROID) ======
     function printReceipt() {
       if (!editingJob) return;
 
@@ -1094,45 +1028,107 @@
           const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
           const due = Math.max(0, parseFloat(price) - totalPaid).toFixed(2);
 
-          // Fill receipt
-          document.getElementById('print-invoice').textContent = job.invoiceNumber || 'N/A';
-          document.getElementById('print-date').textContent = jobDateFormatted;
-          document.getElementById('print-due-date').textContent = jobDateFormatted;
-          document.getElementById('print-customer').textContent = job.customer;
-          document.getElementById('print-address').innerHTML = (job.address || 'Not provided').replace(/\n/g, '<br>');
-          document.getElementById('print-reason').textContent = job.reason || 'Call out charge';
-          document.getElementById('print-unit-price').textContent = price;
-          document.getElementById('print-amount').textContent = price;
-          document.getElementById('print-total').textContent = price;
-
           const paidItems = (job.payments || [])
             .map(p => `Paid £${parseFloat(p.amount).toFixed(2)} on ${formatDate(parseDate(p.date))}`)
             .join('<br>');
-          document.getElementById('print-paid-date').innerHTML = paidItems ? `<p><strong>Payments:</strong></p>${paidItems}` : '';
-          document.getElementById('print-due').textContent = due;
 
-          // === RELIABLE PRINT FIX FOR SLOW DEVICES ===
-          const receipt = document.getElementById('receipt');
-          receipt.style.visibility = 'visible';
-          receipt.style.position = 'absolute';
-          receipt.style.left = '0';
-          receipt.style.top = '0';
-          receipt.style.width = '210mm';
-          receipt.style.height = '297mm';
+          // Generate full HTML for new tab
+          const printContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <title>Receipt - ${job.invoiceNumber}</title>
+              <style>
+                body { font-family: Arial, sans-serif; color: #000; padding: 15mm; width: 210mm; margin: 0 auto; }
+                .logo { margin-bottom: 20px; }
+                .logo img { height: 60px; }
+                h2 { margin: 0; color: #000; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
+                td, th { padding: 8px; vertical-align: top; }
+                .bordered { border: 1px solid #000; }
+                .text-right { text-align: right; }
+                .text-center { text-align: center; }
+                .mt-20 { margin-top: 20px; }
+                .footer { position: absolute; bottom: 15mm; right: 15mm; font-size: 10pt; }
+                @page { margin: 0; size: A4; }
+              </style>
+            </head>
+            <body onload="window.print()">
+              <div class="logo">
+                <img src="https://acaciatv.netlify.app/assets/images/logo.svg" alt="Logo" />
+              </div>
 
-          // Force reflow
-          void receipt.offsetHeight;
+              <table>
+                <tr>
+                  <td width="30%">
+                    <strong>Acacia TV</strong><br>
+                    Filer Road, Halfway<br>
+                    Sheerness, Kent, ME12 3AL<br>
+                    United Kingdom<br>
+                    <strong>01795 873160</strong><br>
+                    acaciatv@hotmail.co.uk<br>
+                    <a href="https://acaciatv.netlify.app">https://acaciatv.netlify.app</a>
+                  </td>
+                  <td width="70%" class="text-right">
+                    <h2>Invoice <span>${job.invoiceNumber || 'N/A'}</span></h2>
+                    <table style="margin-top:10px;">
+                      <tr><td class="text-right"><strong>Invoice Date:</strong></td><td>${jobDateFormatted}</td></tr>
+                      <tr><td class="text-right"><strong>Due Date:</strong></td><td>${jobDateFormatted}</td></tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
 
-          // Delay for slow devices
-          setTimeout(() => {
-            window.print();
+              <table>
+                <tr>
+                  <td width="50%">
+                    <strong>Billed To:</strong><br>
+                    ${job.customer}<br>
+                    ${(job.address || 'Not provided').replace(/\n/g, '<br>')}
+                  </td>
+                  <td width="50%"></td>
+                </tr>
+              </table>
 
-            // Hide after print
-            setTimeout(() => {
-              receipt.style.visibility = 'hidden';
-              receipt.style.left = '-9999px';
-            }, 500);
-          }, 600); // 600ms delay for Galaxy A21s
+              <table class="bordered">
+                <thead style="background:#f0f0f0;">
+                  <tr>
+                    <th align="left">Description</th>
+                    <th class="text-center">Quantity</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>${job.reason || 'Call out charge'}</td>
+                    <td class="text-center">1.00</td>
+                    <td class="text-right">£${price}</td>
+                    <td class="text-right">£${price}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                    <td class="text-right"><strong>£${price}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              ${paidItems ? `<div class="mt-20"><p><strong>Payments:</strong></p>${paidItems}</div>` : ''}
+
+              <p class="mt-20"><strong>Amount Due:</strong> £${due}</p>
+
+              <div class="footer">Page 1 / 1</div>
+            </body>
+            </html>
+          `;
+
+          const printWindow = window.open('', '_blank');
+          printWindow.document.write(printContent);
+          printWindow.document.close();
+          printWindow.focus();
         })
         .catch(() => {
           alert('Failed to load job data for printing.');
