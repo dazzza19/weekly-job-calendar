@@ -1082,7 +1082,7 @@
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
 
-    // ====== PRINT RECEIPT ======
+    // ====== PRINT RECEIPT (Mobile-Friendly) ======
     function printReceipt() {
       if (!editingJob) return;
 
@@ -1118,9 +1118,17 @@
           document.getElementById('print-paid-date').innerHTML = paidItems ? `<p><strong>Payments:</strong></p>${paidItems}` : '';
           document.getElementById('print-due').textContent = due;
 
-          document.getElementById('receipt').style.display = 'block';
-          window.print();
-          document.getElementById('receipt').style.display = 'none';
+          // Mobile print fix
+          const receipt = document.getElementById('receipt');
+          receipt.style.display = 'block';
+          receipt.style.visibility = 'hidden';
+          receipt.offsetHeight; // Force reflow
+
+          setTimeout(() => {
+            receipt.style.visibility = 'visible';
+            window.print();
+            receipt.style.display = 'none';
+          }, 150);
         })
         .catch(() => {
           alert('Failed to load job data for printing.');
