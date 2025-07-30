@@ -908,7 +908,7 @@
 
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
-          loadBookingsAndRender(); // ✅ Full refresh to update both modal and calendar
+          loadBookingsAndRender(); // ✅ Full refresh
         } else {
           alert('Failed to save payment.');
         }
@@ -942,7 +942,7 @@
 
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
-          loadBookingsAndRender(); // ✅ Refresh UI immediately
+          loadBookingsAndRender(); // ✅ Full refresh
           alert('Marked as Paid in Full!');
         } else {
           alert('Failed to update job.');
@@ -1075,7 +1075,7 @@
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
 
-    // ====== PRINT RECEIPT (FIXED FOR ALL DEVICES) ======
+    // ====== PRINT RECEIPT (FULLY FIXED FOR GALAXY A21s) ======
     function printReceipt() {
       if (!editingJob) return;
 
@@ -1111,7 +1111,7 @@
           document.getElementById('print-paid-date').innerHTML = paidItems ? `<p><strong>Payments:</strong></p>${paidItems}` : '';
           document.getElementById('print-due').textContent = due;
 
-          // === RELIABLE PRINT FIX ===
+          // === RELIABLE PRINT FIX FOR SLOW DEVICES ===
           const receipt = document.getElementById('receipt');
           receipt.style.visibility = 'visible';
           receipt.style.position = 'absolute';
@@ -1123,6 +1123,7 @@
           // Force reflow
           void receipt.offsetHeight;
 
+          // Delay for slow devices
           setTimeout(() => {
             window.print();
 
@@ -1131,7 +1132,7 @@
               receipt.style.visibility = 'hidden';
               receipt.style.left = '-9999px';
             }, 500);
-          }, 300);
+          }, 600); // 600ms delay for Galaxy A21s
         })
         .catch(() => {
           alert('Failed to load job data for printing.');
