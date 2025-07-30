@@ -539,7 +539,7 @@
           <button class="btn-paid-full" onclick="markPaidInFull()">Paid in Full</button>
         </div>
         <div class="modal-footer">
-          <button class="btn-print" onclick="printReceipt()">Print Invoice</button>
+          <button class="btn-print" onclick="printReceipt()">Print Receipt</button>
           <button class="btn-delete" onclick="deleteJob()">Delete Job</button>
           <button class="btn-cancel" onclick="closeModal()">Close</button>
         </div>
@@ -1084,7 +1084,7 @@
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
 
-    // ====== PRINT RECEIPT (Mobile-Friendly) ======
+    // ====== PRINT RECEIPT (Mobile-Friendly, Auto-Close) ======
     function printReceipt() {
       if (!editingJob) return;
 
@@ -1124,7 +1124,7 @@
                 }
               </style>
             </head>
-            <body onload="window.print();">
+            <body>
               <div class="header">
                 <div>
                   <img src="https://acaciatv.netlify.app/assets/images/logo.svg" class="logo" alt="Logo" />
@@ -1173,6 +1173,12 @@
               <p><strong>Amount Due:</strong> £${due}</p>
 
               <button class="no-print" onclick="window.close()" style="margin-top:20px;">Close</button>
+              <script type="text/javascript">
+                setTimeout(() => {
+                  window.print();
+                  window.onafterprint = () => setTimeout(window.close, 500);
+                }, 500);
+              </script>
             </body>
             </html>
           `;
