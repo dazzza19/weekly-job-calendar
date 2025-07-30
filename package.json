@@ -1,0 +1,19 @@
+{
+  "name": "weekly-job-calendar",
+  "version": "1.0.0",
+  "description": "A weekly job calendar using Netlify Functions and Neon PostgreSQL",
+  "main": "index.html",
+  "scripts": {
+    "start": "netlify dev",
+    "deploy": "netlify deploy"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.10.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
