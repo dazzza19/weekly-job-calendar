@@ -281,7 +281,7 @@
     .close-modal:hover {
       color: #000;
     }
-    /* Compact body */
+    /* Modal Body */
     .modal-body {
       flex: 1;
       overflow-y: auto;
@@ -290,6 +290,10 @@
     }
     .modal-body p {
       margin: 4px 0;
+      color: #333; /* Fixed: dark text */
+    }
+    .modal-body strong {
+      color: #000;
     }
     .payment-list {
       margin: 10px 0;
@@ -300,6 +304,7 @@
       background: #f8f9fa;
       margin-bottom: 3px;
       border-radius: 3px;
+      color: #333;
     }
     .form-group {
       margin: 8px 0;
@@ -309,23 +314,26 @@
       margin-bottom: 2px;
       font-weight: 600;
       font-size: 0.9em;
+      color: #333;
     }
     .form-group input, .form-group textarea {
       padding: 6px;
       font-size: 0.95em;
     }
-    /* Modal Footer - Compact Grid */
+    /* Scrollable Footer */
     .modal-footer {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
+      overflow-x: auto;
       gap: 8px;
-      padding: 12px 20px;
+      padding: 12px 15px;
       background: white;
       border-top: 1px solid #dee2e6;
       box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+      white-space: nowrap;
     }
     .modal-footer button {
-      padding: 12px 5px;
+      flex: 0 0 auto;
+      padding: 12px 10px;
       border: none;
       border-radius: 6px;
       font-size: 0.85em;
@@ -337,23 +345,38 @@
       justify-content: center;
       gap: 3px;
       height: 50px;
-      min-height: 50px;
+      min-width: 70px;
+      color: white;
     }
     .btn-call {
       background: #28a745;
-      color: white;
     }
     .btn-print {
       background: #6f42c1;
-      color: white;
     }
     .btn-delete {
       background: #dc3545;
-      color: white;
     }
     .btn-cancel {
       background: #6c757d;
-      color: white;
+    }
+    .btn-add-payment {
+      background: #17a2b8;
+    }
+    .btn-paid-full {
+      background: #28a745;
+    }
+    .btn-edit {
+      background: #ffc107;
+      color: black;
+    }
+    /* Hide scrollbar but keep scrollable */
+    .modal-footer::-webkit-scrollbar {
+      display: none;
+    }
+    .modal-footer {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
     /* Search Results */
     #search-results {
@@ -471,12 +494,13 @@
         min-height: 150px;
       }
       .modal-footer {
-        grid-template-columns: 1fr;
+        flex-direction: column;
         gap: 6px;
       }
       .modal-footer button {
         height: 48px;
-        font-size: 0.8em;
+        min-width: auto;
+        width: 100%;
       }
     }
   </style>
@@ -572,8 +596,6 @@
             <label for="payment-date">Payment Date</label>
             <input type="date" id="payment-date" />
           </div>
-          <button class="btn-add-payment" onclick="addPayment()">Add Payment</button>
-          <button class="btn-paid-full" onclick="markPaidInFull()">Set as Paid in Full</button>
         </div>
         <div class="modal-footer">
           <button class="btn-call" onclick="callCustomer()">
@@ -591,6 +613,18 @@
           <button class="btn-cancel" onclick="closeModal()">
             <span>❌</span>
             <span>Close</span>
+          </button>
+          <button class="btn-add-payment" onclick="addPayment()">
+            <span>💰</span>
+            <span>Add Payment</span>
+          </button>
+          <button class="btn-paid-full" onclick="markPaidInFull()">
+            <span>✅</span>
+            <span>Paid Full</span>
+          </button>
+          <button class="btn-edit" onclick="openEditJobForm()">
+            <span>✏️</span>
+            <span>Edit</span>
           </button>
         </div>
       </div>
@@ -1078,6 +1112,28 @@
           }
         })
         .catch(() => alert('Failed to load customer data.'));
+    }
+
+    // ====== EDIT JOB FORM ======
+    function openEditJobForm() {
+      if (!editingJob) return;
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) return alert('Job not found.');
+
+          // Populate form
+          document.getElementById('edit-customer').value = job.customer;
+          document.getElementById('edit-address').value = job.address || '';
+          document.getElementById('edit-phone').value = job.phone || '';
+          document.getElementById('edit-reason').value = job.reason || 'Call out charge';
+          document.getElementById('edit-price').value = parseFloat(job.price);
+
+          // Show modal with edit form
+          document.getElementById('edit-job-form').style.display = 'block';
+        })
+        .catch(() => alert('Failed to load job for editing.'));
     }
 
     // ====== PRINT RECEIPT ======
