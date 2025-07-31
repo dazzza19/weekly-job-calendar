@@ -1106,8 +1106,74 @@
     // ====== EDIT JOB FORM ======
     function openEditJobForm() {
       if (!editingJob) return;
-      alert('Edit job feature not fully implemented yet. Would you like me to add it?');
-      // We can add full edit form if needed
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) return alert('Job not found.');
+
+          // Create form overlay
+          const formHTML = `
+            <div id="edit-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; justify-content:center; align-items:center; z-index:2000;">
+              <div style="background:white; padding:20px; border-radius:10px; width:90%; max-width:500px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                <h3 style="margin-top:0;">Edit Job</h3>
+                <label>Customer Name</label>
+                <input type="text" id="edit-customer" value="${job.customer}" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;" />
+                <label>Address</label>
+                <textarea id="edit-address" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;">${job.address || ''}</textarea>
+                <label>Phone Number</label>
+                <input type="tel" id="edit-phone" value="${job.phone || ''}" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;" />
+                <label>Reason for Callout</label>
+                <textarea id="edit-reason" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;">${job.reason || 'Call out charge'}</textarea>
+                <label>Total Price (£)</label>
+                <input type="number" step="0.01" id="edit-price" value="${parseFloat(job.price)}" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;" />
+                <div style="margin-top:15px; display:flex; gap:10px;">
+                  <button onclick="saveEditJob()" style="flex:1; padding:10px; background:#28a745; color:white; border:none; border-radius:5px; cursor:pointer;">Save Changes</button>
+                  <button onclick="document.getElementById('edit-overlay').remove()" style="flex:1; padding:10px; background:#6c757d; color:white; border:none; border-radius:5px; cursor:pointer;">Cancel</button>
+                </div>
+              </div>
+            </div>
+          `;
+          document.body.insertAdjacentHTML('beforeend', formHTML);
+        })
+        .catch(() => alert('Failed to load job for editing.'));
+    }
+
+    async function saveEditJob() {
+      const customer = document.getElementById('edit-customer').value.trim();
+      const address = document.getElementById('edit-address').value.trim();
+      const phone = document.getElementById('edit-phone').value.trim();
+      const reason = document.getElementById('edit-reason').value.trim();
+      const price = document.getElementById('edit-price').value.trim();
+
+      if (!customer || !price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+        alert('Please enter a valid customer name and price.');
+        return;
+      }
+
+      try {
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const job = bookings[editingJob.dateKey][editingJob.jobIndex];
+
+        // Update job
+        job.customer = customer;
+        job.address = address;
+        job.phone = phone;
+        job.reason = reason;
+        job.price = parseFloat(price).toFixed(2);
+
+        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
+        if (success) {
+          document.getElementById('edit-overlay').remove();
+          loadBookingsAndRender(); // Refresh UI
+          alert('Job updated successfully!');
+        } else {
+          alert('Failed to save changes.');
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+      }
     }
 
     // ====== PRINT RECEIPT ======
