@@ -1021,8 +1021,8 @@
                   <td width="50%">
                     <strong>Billed To:</strong><br>
                     ${job.customer}<br>
-                    ${(job.address || 'Not provided').replace(/\\n/g, '<br>')}
-                    ${job.phone ? '<br>' + job.phone : ''}
+                    ${(job.address || 'Not provided').replace(/\\\\n/g, '<br>')}<br>
+                    ${job.phone ? job.phone : ''}
                   </td>
                   <td width="50%"></td>
                 </tr>
