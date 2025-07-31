@@ -598,7 +598,7 @@
         const bookings = await res.json();
         renderWeek(bookings);
       } catch (err) {
-        console.error('Failed to load data:', err);
+        console.error('Failed to load ', err);
         alert('Could not connect to database.');
       }
     }
@@ -1021,7 +1021,7 @@
                   <td width="50%">
                     <strong>Billed To:</strong><br>
                     ${job.customer}<br>
-                    ${(job.address || 'Not provided').replace(/\\\\n/g, '<br>')}<br>
+                    ${(job.address || 'Not provided').split('\\n').join('<br>')}<br>
                     ${job.phone ? job.phone : ''}
                   </td>
                   <td width="50%"></td>
