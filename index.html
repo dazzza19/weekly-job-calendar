@@ -247,22 +247,27 @@
       width: 100%; height: 100%;
       background: rgba(0,0,0,0.6);
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       z-index: 1000;
+      padding: 20px;
     }
     .modal-content {
       background: white;
-      padding: 20px;
       border-radius: 10px;
       width: 90%;
       max-width: 500px;
       box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      overflow: hidden;
     }
     .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 15px;
+      padding: 20px 20px 0;
     }
     .modal-header h3 {
       margin: 0;
@@ -276,6 +281,13 @@
     .close-modal:hover {
       color: #000;
     }
+    /* Scrollable body */
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 20px;
+      max-height: 50vh;
+    }
     .payment-list {
       margin: 10px 0;
       font-size: 0.9em;
@@ -287,51 +299,13 @@
       border-radius: 3px;
       font-size: 0.85em;
     }
-    /* Modal Footer Grid */
-    .modal-footer {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 20px;
+    .form-group {
+      margin: 10px 0;
     }
-    .modal-footer button {
-      padding: 14px 10px;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.95em;
+    .form-group label {
+      display: block;
+      margin-bottom: 4px;
       font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      height: 60px;
-      min-height: 60px;
-    }
-    .btn-edit {
-      background: #ffc107;
-      color: black;
-    }
-    .btn-add-payment {
-      background: #17a2b8;
-      color: white;
-    }
-    .btn-paid-full {
-      background: #28a745;
-      color: white;
-    }
-    .btn-print {
-      background: #6f42c1;
-      color: white;
-    }
-    .btn-delete {
-      background: #dc3545;
-      color: white;
-    }
-    .btn-cancel {
-      background: #6c757d;
-      color: white;
     }
     /* Edit Form */
     .edit-job-form {
@@ -373,6 +347,56 @@
     .edit-job-form button.cancel {
       background: #6c757d;
       margin-left: 8px;
+    }
+    /* Modal Footer - Sticky */
+    .modal-footer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 15px 20px;
+      background: white;
+      border-top: 1px solid #dee2e6;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+    .modal-footer button {
+      padding: 14px 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 60px;
+      min-height: 60px;
+    }
+    .btn-edit {
+      background: #ffc107;
+      color: black;
+    }
+    .btn-add-payment {
+      background: #17a2b8;
+      color: white;
+    }
+    .btn-paid-full {
+      background: #28a745;
+      color: white;
+    }
+    .btn-print {
+      background: #6f42c1;
+      color: white;
+    }
+    .btn-delete {
+      background: #dc3545;
+      color: white;
+    }
+    .btn-cancel {
+      background: #6c757d;
+      color: white;
     }
     /* Search Results */
     #search-results {
