@@ -309,7 +309,15 @@
       height: 60px;
       min-height: 60px;
     }
-    .btn-call {
+    .btn-edit {
+      background: #ffc107;
+      color: black;
+    }
+    .btn-add-payment {
+      background: #17a2b8;
+      color: white;
+    }
+    .btn-paid-full {
       background: #28a745;
       color: white;
     }
@@ -325,13 +333,46 @@
       background: #6c757d;
       color: white;
     }
-    .form-group {
-      margin: 10px 0;
+    /* Edit Form */
+    .edit-job-form {
+      margin: 15px 0;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
     }
-    .form-group label {
+    .edit-job-form h4 {
+      margin-top: 0;
+      color: #333;
+      font-size: 1em;
+    }
+    .edit-job-form label {
       display: block;
-      margin-bottom: 4px;
+      margin: 6px 0 2px;
+      font-size: 0.85em;
       font-weight: 600;
+      color: #333;
+    }
+    .edit-job-form input, .edit-job-form textarea {
+      width: 100%;
+      padding: 6px;
+      margin-bottom: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    .edit-job-form button {
+      background: #28a745;
+      color: white;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.9em;
+      cursor: pointer;
+    }
+    .edit-job-form button.cancel {
+      background: #6c757d;
+      margin-left: 8px;
     }
     /* Search Results */
     #search-results {
@@ -552,11 +593,30 @@
           </div>
           <button class="btn-add-payment" onclick="addPayment()">Add Payment</button>
           <button class="btn-paid-full" onclick="markPaidInFull()">Set as Paid in Full</button>
+
+          <!-- Edit Job Form -->
+          <div id="edit-job-form" class="edit-job-form" style="display:none;">
+            <h4>Edit Job Details</h4>
+            <label>Customer Name</label>
+            <input type="text" id="edit-customer" />
+            <label>Address</label>
+            <textarea id="edit-address"></textarea>
+            <label>Phone Number</label>
+            <input type="tel" id="edit-phone" />
+            <label>Reason for Callout</label>
+            <textarea id="edit-reason"></textarea>
+            <label>Total Price (£)</label>
+            <input type="number" step="0.01" id="edit-price" />
+            <div style="margin-top: 10px;">
+              <button onclick="saveEditJob()">Save Changes</button>
+              <button class="cancel" onclick="document.getElementById('edit-job-form').style.display='none'">Cancel</button>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
-          <button class="btn-call" onclick="callCustomer()">
-            <span>📞</span>
-            <span>Call</span>
+          <button class="btn-edit" onclick="openEditJobForm()">
+            <span>✏️</span>
+            <span>Edit</span>
           </button>
           <button class="btn-print" onclick="printReceipt()">
             <span>🖨️</span>
@@ -984,6 +1044,66 @@
       const input = document.getElementById('global-search');
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
+
+    // ====== EDIT JOB ======
+    function openEditJobForm() {
+      if (!editingJob) return;
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) return alert('Job not found.');
+
+          // Populate edit form
+          document.getElementById('edit-customer').value = job.customer;
+          document.getElementById('edit-address').value = job.address || '';
+          document.getElementById('edit-phone').value = job.phone || '';
+          document.getElementById('edit-reason').value = job.reason || 'Call out charge';
+          document.getElementById('edit-price').value = parseFloat(job.price);
+
+          // Show form
+          document.getElementById('edit-job-form').style.display = 'block';
+        })
+        .catch(() => alert('Failed to load job for editing.'));
+    }
+
+    async function saveEditJob() {
+      const customer = document.getElementById('edit-customer').value.trim();
+      const address = document.getElementById('edit-address').value.trim();
+      const phone = document.getElementById('edit-phone').value.trim();
+      const reason = document.getElementById('edit-reason').value.trim();
+      const price = document.getElementById('edit-price').value.trim();
+
+      if (!customer || !price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+        alert('Please enter a valid customer name and price.');
+        return;
+      }
+
+      try {
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const job = bookings[editingJob.dateKey][editingJob.jobIndex];
+
+        // Update job
+        job.customer = customer;
+        job.address = address;
+        job.phone = phone;
+        job.reason = reason;
+        job.price = parseFloat(price).toFixed(2);
+
+        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
+        if (success) {
+          document.getElementById('edit-job-form').style.display = 'none';
+          loadBookingsAndRender(); // Refresh UI
+          alert('Job updated successfully!');
+        } else {
+          alert('Failed to save changes.');
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+      }
+    }
+
     // ====== PRINT RECEIPT ======
     function printReceipt() {
       if (!editingJob) return;
@@ -1099,36 +1219,6 @@
         })
         .catch(() => {
           alert('Failed to load job data for printing.');
-        });
-    }
-    // ====== CALL CUSTOMER ======
-    function callCustomer() {
-      if (!editingJob) return;
-      fetch(API_BASE)
-        .then(res => res.json())
-        .then(bookings => {
-          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
-          if (!job) {
-            alert('Job not found.');
-            return;
-          }
-          const phone = job.phone?.trim();
-          if (!phone) {
-            alert('No phone number on file for this customer.');
-            return;
-          }
-          const telSafe = phone.replace(/[^+\d]/g, '');
-          if (!telSafe) {
-            alert('Phone number is not valid.');
-            return;
-          }
-          const confirmed = confirm(`Call ${phone}?`);
-          if (confirmed) {
-            window.location.href = `tel:${telSafe}`;
-          }
-        })
-        .catch(() => {
-          alert('Failed to load customer data.');
         });
     }
     // ====== INIT ON LOAD ======
