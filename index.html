@@ -971,6 +971,9 @@
           const paidItems = (job.payments || [])
             .map(p => `Paid £${parseFloat(p.amount).toFixed(2)} on ${formatDate(parseDate(p.date))}`)
             .join('<br>');
+          const addressLines = job.address
+            ? job.address.split('\n').map(line => line.trim()).filter(line => line).join('<br>')
+            : 'Not provided';
           const printContent = `
             <!DOCTYPE html>
             <html>
@@ -1021,7 +1024,7 @@
                   <td width="50%">
                     <strong>Billed To:</strong><br>
                     ${job.customer}<br>
-                    ${(job.address || 'Not provided').split('\\n').join('<br>')}<br>
+                    ${addressLines}<br>
                     ${job.phone ? job.phone : ''}
                   </td>
                   <td width="50%"></td>
