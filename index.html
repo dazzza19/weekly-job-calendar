@@ -660,19 +660,23 @@
       daysGrid.innerHTML = '';
       const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       let totalEarnings = 0;
+
       // Get week range
       const weekStart = new Date(currentWeekStart);
       const weekEnd = new Date(currentWeekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
+
       days.forEach((dayName, i) => {
         const dayDate = new Date(currentWeekStart);
         dayDate.setDate(currentWeekStart.getDate() + i);
         const dayKey = formatKey(dayDate);
         const dayFormatted = formatDate(dayDate);
         const dayBookings = bookings[dayKey] || [];
+
         const dayEl = document.createElement('div');
         dayEl.className = 'day';
+
         const jobsHtml = dayBookings.length > 0
           ? dayBookings.map((job, index) => {
               // Sum only payments made **this week**
@@ -683,10 +687,12 @@
                 })
                 .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
               totalEarnings += thisWeekPayments;
+
               const totalDue = parseFloat(job.price) || 0;
               const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
               const isPaid = totalPaid >= totalDue;
               const isPartial = totalPaid > 0 && totalPaid < totalDue;
+
               let statusText = 'Unpaid';
               let statusClass = 'status-unpaid';
               let jobClass = 'job-unpaid';
@@ -699,6 +705,7 @@
                 statusClass = 'status-partial';
                 jobClass = 'job-partial';
               }
+
               return `
                 <div class="job-item ${jobClass}" onclick="event.stopPropagation(); openEditModal('${dayKey}', ${index});">
                   <div class="job-customer">${job.customer}</div>
@@ -709,6 +716,7 @@
               `;
             }).join('')
           : '<div class="no-jobs">No jobs scheduled</div>';
+
         dayEl.innerHTML = `
           <div class="day-name">${dayName}</div>
           <div class="day-date">${dayFormatted}</div>
@@ -725,17 +733,21 @@
         };
         daysGrid.appendChild(dayEl);
       });
+
       document.getElementById('total-earnings').textContent = `£${totalEarnings.toFixed(2)}`;
+
       const start = formatDate(currentWeekStart);
       const end = new Date(currentWeekStart);
       end.setDate(end.getDate() + 6);
       const endStr = formatDate(end);
       document.getElementById('current-week-range').textContent = `${start} - ${endStr}`;
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const jobDateInput = document.getElementById('job-date');
       if (jobDateInput) jobDateInput.value = formatKey(today);
     }
+
     function prevWeek() {
       currentWeekStart.setDate(currentWeekStart.getDate() - 7);
       loadBookingsAndRender();
@@ -744,6 +756,7 @@
       currentWeekStart.setDate(currentWeekStart.getDate() + 7);
       loadBookingsAndRender();
     }
+
     async function openEditModal(dateKey, jobIndex) {
       try {
         const res = await fetch(API_BASE);
@@ -777,10 +790,12 @@
         alert('Failed to load job details.');
       }
     }
+
     function closeModal() {
       document.getElementById('edit-modal').style.display = 'none';
       editingJob = null;
     }
+
     async function addPayment() {
       const amountInput = document.getElementById('new-payment');
       const dateInput = document.getElementById('payment-date');
@@ -804,6 +819,7 @@
         alert('Network error. Please try again.');
       }
     }
+
     async function markPaidInFull() {
       if (!editingJob) return;
       try {
@@ -838,6 +854,7 @@
         alert('Failed to update job.');
       }
     }
+
     async function deleteJob() {
       if (!editingJob || !confirm('Delete this job and all payments?')) return;
       const success = await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
@@ -848,6 +865,7 @@
         alert('Failed to delete job.');
       }
     }
+
     document.getElementById('booking-form').addEventListener('submit', async function(e) {
       e.preventDefault();
       const jobDateStr = document.getElementById('job-date').value;
@@ -889,6 +907,7 @@
         alert('Failed to add job.');
       }
     });
+
     // ====== SEARCH ======
     const globalSearch = document.getElementById('global-search');
     globalSearch.addEventListener('input', async function() {
@@ -952,6 +971,7 @@
       const input = document.getElementById('global-search');
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
+
     // ====== PRINT RECEIPT ======
     function printReceipt() {
       if (!editingJob) return;
@@ -1021,9 +1041,7 @@
                   <td width="50%">
                     <strong>Billed To:</strong><br>
                     ${job.customer}<br>
-                    ${(job.address || 'Not provided').replace(/
-/g, '<br>')}
-                    ${job.phone ? '<br>' + job.phone : ''}
+                    ${(job.address || 'Not provided').replace(/\n/g, '<br>')}
                   </td>
                   <td width="50%"></td>
                 </tr>
@@ -1067,6 +1085,7 @@
           alert('Failed to load job data for printing.');
         });
     }
+
     // ====== INIT ON LOAD ======
     window.onload = function() {
       const savedHash = localStorage.getItem('calendarPassword');
