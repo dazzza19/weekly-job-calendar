@@ -287,27 +287,34 @@
       border-radius: 3px;
       font-size: 0.85em;
     }
+    /* Modal Footer Grid */
+    .modal-footer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 20px;
+    }
     .modal-footer button {
-      padding: 10px 15px;
-      margin-left: 10px;
+      padding: 14px 10px;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: 600;
       cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 60px;
+      min-height: 60px;
     }
-    .btn-add-payment {
-      background: #17a2b8;
-      color: white;
-    }
-    .btn-paid-full {
+    .btn-call {
       background: #28a745;
       color: white;
     }
     .btn-print {
       background: #6f42c1;
-      color: white;
-    }
-    .btn-call {
-      background: #28a745;
       color: white;
     }
     .btn-delete {
@@ -441,6 +448,14 @@
       .day {
         min-height: 150px;
       }
+      .modal-footer {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .modal-footer button {
+        height: 55px;
+        font-size: 0.9em;
+      }
     }
   </style>
 </head>
@@ -539,10 +554,22 @@
           <button class="btn-paid-full" onclick="markPaidInFull()">Set as Paid in Full</button>
         </div>
         <div class="modal-footer">
-          <button class="btn-call" onclick="callCustomer()">📞 Call Customer</button>
-          <button class="btn-print" onclick="printReceipt()">🖨️ Print Receipt</button>
-          <button class="btn-delete" onclick="deleteJob()">🗑️ Delete Job</button>
-          <button class="btn-cancel" onclick="closeModal()">❌ Close</button>
+          <button class="btn-call" onclick="callCustomer()">
+            <span>📞</span>
+            <span>Call</span>
+          </button>
+          <button class="btn-print" onclick="printReceipt()">
+            <span>🖨️</span>
+            <span>Print</span>
+          </button>
+          <button class="btn-delete" onclick="deleteJob()">
+            <span>🗑️</span>
+            <span>Delete</span>
+          </button>
+          <button class="btn-cancel" onclick="closeModal()">
+            <span>❌</span>
+            <span>Close</span>
+          </button>
         </div>
       </div>
     </div>
@@ -1090,13 +1117,11 @@
             alert('No phone number on file for this customer.');
             return;
           }
-          // Clean phone number for tel: link
           const telSafe = phone.replace(/[^+\d]/g, '');
           if (!telSafe) {
             alert('Phone number is not valid.');
             return;
           }
-          // Open phone app
           const confirmed = confirm(`Call ${phone}?`);
           if (confirmed) {
             window.location.href = `tel:${telSafe}`;
