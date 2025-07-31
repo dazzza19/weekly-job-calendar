@@ -306,6 +306,10 @@
       background: #6f42c1;
       color: white;
     }
+    .btn-call {
+      background: #28a745;
+      color: white;
+    }
     .btn-delete {
       background: #dc3545;
       color: white;
@@ -535,9 +539,10 @@
           <button class="btn-paid-full" onclick="markPaidInFull()">Set as Paid in Full</button>
         </div>
         <div class="modal-footer">
-          <button class="btn-print" onclick="printReceipt()">Print Receipt</button>
-          <button class="btn-delete" onclick="deleteJob()">Delete Job</button>
-          <button class="btn-cancel" onclick="closeModal()">Close</button>
+          <button class="btn-call" onclick="callCustomer()">📞 Call Customer</button>
+          <button class="btn-print" onclick="printReceipt()">🖨️ Print Receipt</button>
+          <button class="btn-delete" onclick="deleteJob()">🗑️ Delete Job</button>
+          <button class="btn-cancel" onclick="closeModal()">❌ Close</button>
         </div>
       </div>
     </div>
@@ -598,7 +603,7 @@
         const bookings = await res.json();
         renderWeek(bookings);
       } catch (err) {
-        console.error('Failed to load ', err);
+        console.error('Failed to load data:', err);
         alert('Could not connect to database.');
       }
     }
@@ -1067,6 +1072,38 @@
         })
         .catch(() => {
           alert('Failed to load job data for printing.');
+        });
+    }
+    // ====== CALL CUSTOMER ======
+    function callCustomer() {
+      if (!editingJob) return;
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) {
+            alert('Job not found.');
+            return;
+          }
+          const phone = job.phone?.trim();
+          if (!phone) {
+            alert('No phone number on file for this customer.');
+            return;
+          }
+          // Clean phone number for tel: link
+          const telSafe = phone.replace(/[^+\d]/g, '');
+          if (!telSafe) {
+            alert('Phone number is not valid.');
+            return;
+          }
+          // Open phone app
+          const confirmed = confirm(`Call ${phone}?`);
+          if (confirmed) {
+            window.location.href = `tel:${telSafe}`;
+          }
+        })
+        .catch(() => {
+          alert('Failed to load customer data.');
         });
     }
     // ====== INIT ON LOAD ======
