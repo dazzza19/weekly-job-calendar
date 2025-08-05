@@ -257,7 +257,6 @@
       width: 90%;
       max-width: 500px;
       box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-      color: #000;
     }
     .modal-header {
       display: flex;
@@ -288,7 +287,7 @@
       border-radius: 3px;
       font-size: 0.85em;
     }
-    /* Modal Footer (6 buttons) */
+    /* Modal Footer Grid */
     .modal-footer {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -324,14 +323,6 @@
     }
     .btn-cancel {
       background: #6c757d;
-      color: white;
-    }
-    .btn-paid-full {
-      background: #ffc107;
-      color: #000;
-    }
-    .btn-close {
-      background: #007bff;
       color: white;
     }
     .form-group {
@@ -477,7 +468,6 @@
     <input type="password" id="password-confirm" placeholder="Confirm password" style="display:none;" />
     <button onclick="window.checkPassword()">Unlock</button>
   </div>
-
   <!-- Main App -->
   <div id="main-app" class="no-print" style="display:none;">
     <div class="container">
@@ -500,7 +490,6 @@
           </div>
         </div>
       </div>
-
       <!-- New Job Form -->
       <div class="new-booking">
         <h2>New Job Booking</h2>
@@ -516,7 +505,7 @@
           <label for="reason">Reason for Callout</label>
           <textarea id="reason" placeholder="e.g. Call out charge"></textarea>
           <label for="price">Total Job Price (£)</label>
-          <input type="text" id="price" placeholder="0.00 or 'foc'" required />
+          <input type="number" step="0.01" id="price" placeholder="0.00" required />
           <label for="assigned">Assigned To</label>
           <select id="assigned" required>
             <option value="">-- Select Technician --</option>
@@ -526,7 +515,6 @@
           <button type="submit">Add Job</button>
         </form>
       </div>
-
       <!-- Weekly Schedule -->
       <div class="weekly-schedule">
         <h2>Weekly Schedule</h2>
@@ -535,7 +523,6 @@
         </div>
       </div>
     </div>
-
     <!-- Edit Job Modal -->
     <div id="edit-modal" class="modal">
       <div class="modal-content">
@@ -545,7 +532,7 @@
         </div>
         <div class="modal-body">
           <p><strong>Date:</strong> <span id="modal-date"></span></p>
-          <p><strong>Total Due:</strong> <span id="modal-total">0.00</span></p>
+          <p><strong>Total Due:</strong> £<span id="modal-total">0.00</span></p>
           <p><strong>Total Paid:</strong> £<span id="modal-paid">0.00</span></p>
           <p><strong>Outstanding:</strong> £<span id="modal-outstanding">0.00</span></p>
           <p><strong>Assigned To:</strong> <span id="modal-assigned"></span></p>
@@ -563,12 +550,8 @@
             <label for="payment-date">Payment Date</label>
             <input type="date" id="payment-date" />
           </div>
-          <button class="btn-add-payment" onclick="addPayment()" style="padding: 10px; background: #28a745; color: white; border: none; border-radius: 6px; width: 100%; margin: 10px 0;">
-            ➕ Add Payment
-          </button>
-          <button class="btn-paid-full" onclick="markPaidInFull()" style="padding: 10px; background: #ffc107; color: #000; border: none; border-radius: 6px; width: 100%; font-weight: bold;">
-            ✅ Mark as Paid in Full
-          </button>
+          <button class="btn-add-payment" onclick="addPayment()">Add Payment</button>
+          <button class="btn-paid-full" onclick="markPaidInFull()">Set as Paid in Full</button>
         </div>
         <div class="modal-footer">
           <button class="btn-call" onclick="callCustomer()">
@@ -583,22 +566,13 @@
             <span>🗑️</span>
             <span>Delete</span>
           </button>
-          <button class="btn-close" onclick="closeModal()">
+          <button class="btn-cancel" onclick="closeModal()">
             <span>❌</span>
             <span>Close</span>
-          </button>
-          <button class="btn-paid-full" onclick="markPaidInFull()">
-            <span>✅</span>
-            <span>Paid</span>
-          </button>
-          <button class="btn-add-payment" onclick="addPayment()">
-            <span>➕</span>
-            <span>Pay</span>
           </button>
         </div>
       </div>
     </div>
-
     <!-- Search Results -->
     <div id="search-results">
       <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
@@ -610,10 +584,8 @@
       </div>
     </div>
   </div>
-
   <!-- Hidden Receipt for Printing -->
   <div id="receipt" style="display:none;"></div>
-
   <script>
     // ====== API CONFIG ======
     const API_BASE = 'https://weekly-job-calendar.netlify.app/.netlify/functions/bookings';
@@ -762,12 +734,7 @@
               return `
                 <div class="job-item ${jobClass}" onclick="event.stopPropagation(); openEditModal('${dayKey}', ${index});">
                   <div class="job-customer">${job.customer}</div>
-                  <div class="job-price">
-                    ${totalDue == 0 
-                      ? '<span style="color:#007bff; font-weight:bold;">Free Service</span>' 
-                      : '£' + totalPaid.toFixed(2) + ' / £' + totalDue.toFixed(2)
-                    }
-                  </div>
+                  <div class="job-price">£${totalPaid.toFixed(2)} / £${totalDue.toFixed(2)}</div>
                   <span class="job-status ${statusClass}">${statusText}</span>
                   <div class="job-assigned">→ ${job.assigned}</div>
                 </div>
@@ -823,16 +790,11 @@
         editingJob = { dateKey, jobIndex };
         document.getElementById('modal-customer').textContent = job.customer;
         document.getElementById('modal-date').textContent = formatDate(jobDate);
-        const totalDue = parseFloat(job.price);
-        if (totalDue == 0) {
-          document.getElementById('modal-total').innerHTML = '<em style="color:#007bff;">Free Service</em>';
-        } else {
-          document.getElementById('modal-total').textContent = totalDue.toFixed(2);
-        }
+        document.getElementById('modal-total').textContent = parseFloat(job.price).toFixed(2);
         document.getElementById('modal-assigned').textContent = job.assigned;
         if (!job.payments) job.payments = [];
         const totalPaid = job.payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-        const outstanding = Math.max(0, totalDue - totalPaid);
+        const outstanding = (parseFloat(job.price) || 0) - totalPaid;
         document.getElementById('modal-paid').textContent = totalPaid.toFixed(2);
         document.getElementById('modal-outstanding').textContent = outstanding.toFixed(2);
         document.getElementById('modal-invoice').textContent = job.invoiceNumber || 'N/A';
@@ -881,10 +843,6 @@
         const bookings = await res.json();
         const job = bookings[editingJob.dateKey][editingJob.jobIndex];
         const totalDue = parseFloat(job.price);
-        if (totalDue == 0) {
-          alert('This job is free of charge.');
-          return;
-        }
         const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
         if (totalPaid >= totalDue) {
           alert('This job is already fully paid.');
@@ -914,37 +872,12 @@
     }
     async function deleteJob() {
       if (!editingJob || !confirm('Delete this job and all payments?')) return;
-
-      try {
-        const res = await fetch(API_BASE);
-        const bookings = await res.json();
-        const jobsForDay = bookings[editingJob.dateKey] || [];
-
-        if (editingJob.jobIndex < 0 || editingJob.jobIndex >= jobsForDay.length) {
-          alert('Job no longer exists.');
-          closeModal();
-          loadBookingsAndRender();
-          return;
-        }
-
-        const updatedJobs = jobsForDay.filter((_, index) => index !== editingJob.jobIndex);
-
-        // Delete all jobs for the day
-        await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
-
-        // Only re-insert remaining jobs
-        if (updatedJobs.length > 0) {
-          for (let job of updatedJobs) {
-            await addJobToDB(editingJob.dateKey, job);
-          }
-        }
-
+      const success = await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
+      if (success) {
         closeModal();
         loadBookingsAndRender();
-        alert('Job deleted successfully!');
-      } catch (err) {
-        console.error('Delete failed:', err);
-        alert('Failed to delete job. Please try again.');
+      } else {
+        alert('Failed to delete job.');
       }
     }
     document.getElementById('booking-form').addEventListener('submit', async function(e) {
@@ -954,42 +887,29 @@
       const address = document.getElementById('address').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const reason = document.getElementById('reason').value.trim();
-      const priceInput = document.getElementById('price').value.trim().toLowerCase();
+      const price = document.getElementById('price').value.trim();
       const assigned = document.getElementById('assigned').value;
-
-      if (!customer || !assigned || !jobDateStr) {
-        alert('Please fill in all required fields.');
+      if (!customer || !assigned || !jobDateStr || !price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+        alert('Please fill in all required fields with valid data.');
         return;
       }
-
       const jobDate = parseDate(jobDateStr);
       if (isNaN(jobDate.getTime())) {
         alert('Invalid date format.');
         return;
       }
-
-      let price = '0.00';
-      if (priceInput && priceInput !== 'foc') {
-        if (isNaN(parseFloat(priceInput)) || parseFloat(priceInput) <= 0) {
-          alert('Please enter a valid job price, or type "foc" for free of charge.');
-          return;
-        }
-        price = parseFloat(priceInput).toFixed(2);
-      }
-
       const dayKey = formatKey(jobDate);
       const newJob = {
         customer,
         address,
         phone,
         reason: reason || 'Call out charge',
-        price: price,
+        price: parseFloat(price).toFixed(2),
         assigned,
         payments: [],
         invoiceNumber: getNextInvoiceNumber(),
         timestamp: new Date().toISOString()
       };
-
       const success = await addJobToDB(dayKey, newJob);
       if (success) {
         this.reset();
