@@ -1046,6 +1046,37 @@
       });
     }
 
+    // ====== DUPLICATE JOB TO SPECIFIC DATE ======
+    function duplicateJob(jobData, sourceDateKey) {
+      const chosenDate = prompt(
+        `Enter date for new job (YYYY-MM-DD)\n\nLeave empty for today.`,
+        formatKey(new Date())
+      );
+
+      if (!chosenDate) return;
+
+      // Validate date
+      const parsedDate = parseDate(chosenDate);
+      if (isNaN(parsedDate.getTime())) {
+        alert('Invalid date format. Use YYYY-MM-DD.');
+        return;
+      }
+
+      // Pre-fill form
+      document.getElementById('job-date').value = chosenDate;
+      document.getElementById('customer-name').value = jobData.customer || '';
+      document.getElementById('address').value = jobData.address || '';
+      document.getElementById('phone').value = jobData.phone || '';
+      document.getElementById('reason').value = jobData.reason || '';
+      document.getElementById('price').value = parseFloat(jobData.price) || '';
+      document.getElementById('assigned').value = jobData.assigned || '';
+
+      // Scroll to form
+      document.querySelector('.new-booking').scrollIntoView({ behavior: 'smooth' });
+
+      alert(`Job copied from ${formatDate(parseDate(sourceDateKey))}!\nEdit and save the new job.`);
+    }
+
     document.getElementById('booking-form').addEventListener('submit', async function(e) {
       e.preventDefault();
       const jobDateStr = document.getElementById('job-date').value;
@@ -1103,24 +1134,26 @@
       const resultsList = document.getElementById('search-results-list');
       resultsList.innerHTML = '';
       try {
+        const res = await fetch(API_BASE);
+        const rows = await res.json();
+
         const results = [];
-        Object.keys(allBookings).forEach(dateKey => {
-          (allBookings[dateKey] || []).forEach((record, index) => {
-            const job = record.job;
-            if (
-              job.customer.toLowerCase().includes(query) ||
-              (job.address && job.address.toLowerCase().includes(query)) ||
-              (job.phone && job.phone.toLowerCase().includes(query))
-            ) {
-              results.push({
-                job: job,
-                dateKey,
-                jobIndex: index,
-                displayDate: formatDate(parseDate(dateKey))
-              });
-            }
-          });
-        });
+        for (const row of rows) {
+          const job = row.job;
+          if (
+            job.customer.toLowerCase().includes(query) ||
+            (job.address && job.address.toLowerCase().includes(query)) ||
+            (job.phone && job.phone.toLowerCase().includes(query))
+          ) {
+            results.push({
+              job,
+              dateKey: row.date_key,
+              id: row.id,
+              displayDate: formatDate(parseDate(row.date_key))
+            });
+          }
+        }
+
         if (results.length === 0) {
           resultsList.innerHTML = '<p>No matches found.</p>';
         } else {
@@ -1133,12 +1166,40 @@
             li.style.cursor = 'pointer';
             li.innerHTML = `<strong>${result.job.customer}</strong> (${result.displayDate})<br>
                             <small>${result.job.address || 'No address'} | ${result.job.phone || 'No phone'}</small>`;
+
+            // Open in schedule
             li.onclick = () => {
               currentWeekStart = getWeekStart(parseDate(result.dateKey));
-              renderWeek();
-              setTimeout(() => openEditModal(result.dateKey, result.jobIndex, allBookings[result.dateKey][result.jobIndex].id), 300);
+              loadBookingsAndRender();
+              setTimeout(() => {
+                const jobsForDay = allBookings[result.dateKey] || [];
+                const jobIndex = jobsForDay.findIndex(r => r.id === result.id);
+                if (jobIndex !== -1) {
+                  openEditModal(result.dateKey, jobIndex, result.id);
+                } else {
+                  alert('Job not found after refresh.');
+                }
+              }, 300);
               document.getElementById('search-results').style.display = 'none';
             };
+
+            // Add "Add to Date..." button
+            const addButton = document.createElement('button');
+            addButton.textContent = '➕ Add to Date...';
+            addButton.style.marginTop = '5px';
+            addButton.style.padding = '5px';
+            addButton.style.fontSize = '0.85em';
+            addButton.style.background = '#007bff';
+            addButton.style.color = 'white';
+            addButton.style.border = 'none';
+            addButton.style.borderRadius = '4px';
+            addButton.style.cursor = 'pointer';
+            addButton.onclick = (e) => {
+              e.stopPropagation();
+              duplicateJob(result.job, result.dateKey);
+            };
+            li.appendChild(addButton);
+
             resultsList.appendChild(li);
           });
         }
