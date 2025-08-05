@@ -249,7 +249,6 @@
       justify-content: center;
       align-items: center;
       z-index: 1000;
-      overflow: auto;
     }
     .modal-content {
       background: white;
@@ -258,11 +257,6 @@
       width: 90%;
       max-width: 500px;
       box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-      color: #000;
-      margin: 40px auto;
-      position: relative;
-      max-height: 90vh;
-      overflow-y: auto;
     }
     .modal-header {
       display: flex;
@@ -287,24 +281,13 @@
       font-size: 0.9em;
     }
     .payment-item {
-      padding: 8px 10px;
+      padding: 5px;
       background: #f8f9fa;
-      margin-bottom: 6px;
-      border-radius: 6px;
+      margin-bottom: 4px;
+      border-radius: 3px;
       font-size: 0.85em;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
-    .delete-payment {
-      color: #dc3545;
-      background: none;
-      border: none;
-      font-size: 1em;
-      cursor: pointer;
-      padding: 0 5px;
-    }
-    /* Modal Footer */
+    /* Modal Footer Grid */
     .modal-footer {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -341,14 +324,6 @@
     .btn-cancel {
       background: #6c757d;
       color: white;
-    }
-    .btn-edit {
-      background: #007bff;
-      color: white;
-    }
-    .btn-paid-full {
-      background: #ffc107;
-      color: #000;
     }
     .form-group {
       margin: 10px 0;
@@ -532,7 +507,7 @@
           <label for="reason">Reason for Callout</label>
           <textarea id="reason" placeholder="e.g. Call out charge"></textarea>
           <label for="price">Total Job Price (£)</label>
-          <input type="number" step="0.01" id="price" placeholder="0.00" required />
+          <input type="text" id="price" placeholder="0.00 or 'foc'" required />
           <label for="assigned">Assigned To</label>
           <select id="assigned" required>
             <option value="">-- Select Technician --</option>
@@ -561,7 +536,7 @@
         </div>
         <div class="modal-body">
           <p><strong>Date:</strong> <span id="modal-date"></span></p>
-          <p><strong>Total Due:</strong> £<span id="modal-total">0.00</span></p>
+          <p><strong>Total Due:</strong> <span id="modal-total">0.00</span></p>
           <p><strong>Total Paid:</strong> £<span id="modal-paid">0.00</span></p>
           <p><strong>Outstanding:</strong> £<span id="modal-outstanding">0.00</span></p>
           <p><strong>Assigned To:</strong> <span id="modal-assigned"></span></p>
@@ -603,14 +578,6 @@
             <span>❌</span>
             <span>Close</span>
           </button>
-          <button class="btn-edit" onclick="editJob()">
-            <span>✏️</span>
-            <span>Edit</span>
-          </button>
-          <button class="btn-paid-full" onclick="markPaidInFull()">
-            <span>✅</span>
-            <span>Paid</span>
-          </button>
         </div>
       </div>
     </div>
@@ -638,7 +605,6 @@
     currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay() + (currentWeekStart.getDay() === 0 ? -6 : 1));
     currentWeekStart.setHours(0, 0, 0, 0);
     let editingJob = null;
-    let allBookings = {};
 
     // ====== PASSWORD SYSTEM ======
     window.checkPassword = function() {
@@ -675,20 +641,10 @@
     async function loadBookingsAndRender() {
       try {
         const res = await fetch(API_BASE);
-        const rows = await res.json();
-
-        allBookings = {};
-        for (const row of rows) {
-          if (!allBookings[row.date_key]) allBookings[row.date_key] = [];
-          allBookings[row.date_key].push({
-            id: row.id,
-            job: row.job
-          });
-        }
-
-        renderWeek();
+        const bookings = await res.json();
+        renderWeek(bookings);
       } catch (err) {
-        console.error('Failed to load ', err);
+        console.error('Failed to load data:', err);
         alert('Could not connect to database.');
       }
     }
@@ -702,20 +658,20 @@
       return res.ok;
     }
 
-    async function updateJobInDB(jobId, job) {
+    async function updateJobInDB(dateKey, jobIndex, job) {
       const res = await fetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'updateById', id: jobId, job })
+        body: JSON.stringify({ type: 'update', date_key: dateKey, jobIndex, job })
       });
       return res.ok;
     }
 
-    async function deleteJobFromDB(jobId) {
+    async function deleteJobFromDB(dateKey, jobIndex) {
       const res = await fetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'deleteById', id: jobId })
+        body: JSON.stringify({ type: 'delete', date_key: dateKey, jobIndex })
       });
       return res.ok;
     }
@@ -749,7 +705,7 @@
     }
 
     // ====== UI FUNCTIONS ======
-    function renderWeek() {
+    function renderWeek(bookings = {}) {
       const daysGrid = document.getElementById('days-grid');
       if (!daysGrid) return;
       daysGrid.innerHTML = '';
@@ -766,13 +722,12 @@
         dayDate.setDate(currentWeekStart.getDate() + i);
         const dayKey = formatKey(dayDate);
         const dayFormatted = formatDate(dayDate);
-        const dayBookings = allBookings[dayKey] || [];
+        const dayBookings = bookings[dayKey] || [];
         const dayEl = document.createElement('div');
         dayEl.className = 'day';
 
         const jobsHtml = dayBookings.length > 0
-          ? dayBookings.map((record, index) => {
-              const job = record.job;
+          ? dayBookings.map((job, index) => {
               const thisWeekPayments = (job.payments || [])
                 .filter(p => {
                   const pDate = parseDate(p.date);
@@ -800,7 +755,7 @@
               }
 
               return `
-                <div class="job-item ${jobClass}" onclick="event.stopPropagation(); openEditModal('${dayKey}', ${index}, '${record.id}');">
+                <div class="job-item ${jobClass}" onclick="event.stopPropagation(); openEditModal('${dayKey}', ${index});">
                   <div class="job-customer">${job.customer}</div>
                   <div class="job-price">£${totalPaid.toFixed(2)} / £${totalDue.toFixed(2)}</div>
                   <span class="job-status ${statusClass}">${statusText}</span>
@@ -820,7 +775,7 @@
 
         dayEl.onclick = () => {
           if (dayBookings.length === 1) {
-            openEditModal(dayKey, 0, dayBookings[0].id);
+            openEditModal(dayKey, 0);
           } else if (dayBookings.length > 1) {
             alert('Multiple jobs. Click on a specific job.');
           }
@@ -850,42 +805,40 @@
       loadBookingsAndRender();
     }
 
-    async function openEditModal(dateKey, jobIndex, jobId) {
-      const jobsForDay = allBookings[dateKey] || [];
-      const record = jobsForDay[jobIndex];
-      if (!record) {
-        alert('Job not found.');
-        loadBookingsAndRender();
-        return;
+    async function openEditModal(dateKey, jobIndex) {
+      try {
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const job = bookings[dateKey]?.[jobIndex];
+        if (!job) {
+          alert('Job not found or has been deleted.');
+          loadBookingsAndRender();
+          return;
+        }
+        const jobDate = parseDate(dateKey);
+        editingJob = { dateKey, jobIndex };
+        document.getElementById('modal-customer').textContent = job.customer;
+        document.getElementById('modal-date').textContent = formatDate(jobDate);
+        document.getElementById('modal-total').textContent = parseFloat(job.price).toFixed(2);
+        document.getElementById('modal-assigned').textContent = job.assigned;
+        if (!job.payments) job.payments = [];
+        const totalPaid = job.payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+        const outstanding = (parseFloat(job.price) || 0) - totalPaid;
+        document.getElementById('modal-paid').textContent = totalPaid.toFixed(2);
+        document.getElementById('modal-outstanding').textContent = outstanding.toFixed(2);
+        document.getElementById('modal-invoice').textContent = job.invoiceNumber || 'N/A';
+
+        const paymentList = document.getElementById('payment-list');
+        paymentList.innerHTML = job.payments.length > 0
+          ? job.payments.map(p => `<div class="payment-item">£${parseFloat(p.amount).toFixed(2)} on ${p.date}</div>`).join('')
+          : '<div class="payment-item">No payments recorded</div>';
+
+        const today = new Date();
+        document.getElementById('payment-date').value = formatKey(today);
+        document.getElementById('edit-modal').style.display = 'flex';
+      } catch (err) {
+        alert('Failed to load job details.');
       }
-      const job = record.job;
-      editingJob = { dateKey, jobIndex, id: jobId };
-
-      const jobDate = parseDate(dateKey);
-      document.getElementById('modal-customer').textContent = job.customer;
-      document.getElementById('modal-date').textContent = formatDate(jobDate);
-      document.getElementById('modal-total').textContent = parseFloat(job.price).toFixed(2);
-      document.getElementById('modal-assigned').textContent = job.assigned;
-      if (!job.payments) job.payments = [];
-      const totalPaid = job.payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-      const outstanding = Math.max(0, parseFloat(job.price) - totalPaid);
-      document.getElementById('modal-paid').textContent = totalPaid.toFixed(2);
-      document.getElementById('modal-outstanding').textContent = outstanding.toFixed(2);
-      document.getElementById('modal-invoice').textContent = job.invoiceNumber || 'N/A';
-
-      const paymentList = document.getElementById('payment-list');
-      paymentList.innerHTML = job.payments.length > 0
-        ? job.payments.map((p, i) => `
-            <div class="payment-item">
-              <span>£${parseFloat(p.amount).toFixed(2)} on ${p.date}</span>
-              <button class="delete-payment" onclick="deletePayment(${i})" title="Delete this payment">✕</button>
-            </div>
-          `).join('')
-        : '<div class="payment-item">No payments recorded</div>';
-
-      const today = new Date();
-      document.getElementById('payment-date').value = formatKey(today);
-      document.getElementById('edit-modal').style.display = 'flex';
     }
 
     function closeModal() {
@@ -903,18 +856,14 @@
       if (!date) return alert('Please select a payment date.');
 
       try {
-        const jobsForDay = allBookings[editingJob.dateKey] || [];
-        const job = jobsForDay[editingJob.jobIndex]?.job;
-        if (!job) throw new Error('Job not found');
-
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const job = bookings[editingJob.dateKey][editingJob.jobIndex];
         if (!job.payments) job.payments = [];
         job.payments.push({ amount: amount.toFixed(2), date });
-        const success = await updateJobInDB(editingJob.id, job);
-
+        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
-          closeModal();
           loadBookingsAndRender();
-          alert('Payment added successfully!');
         } else {
           alert('Failed to save payment.');
         }
@@ -923,60 +872,31 @@
       }
     }
 
-    async function deletePayment(paymentIndex) {
-      if (!editingJob || !confirm('Delete this payment?')) return;
-
-      try {
-        const jobsForDay = allBookings[editingJob.dateKey] || [];
-        const job = jobsForDay[editingJob.jobIndex]?.job;
-        if (!job || !job.payments || job.payments.length <= paymentIndex) return;
-
-        job.payments.splice(paymentIndex, 1);
-        const success = await updateJobInDB(editingJob.id, job);
-
-        if (success) {
-          closeModal();
-          loadBookingsAndRender();
-          alert('Payment deleted successfully!');
-        } else {
-          alert('Failed to delete payment.');
-        }
-      } catch (err) {
-        console.error('Delete payment failed:', err);
-        alert('Failed to delete payment. Please try again.');
-      }
-    }
-
     async function markPaidInFull() {
       if (!editingJob) return;
       try {
-        const jobsForDay = allBookings[editingJob.dateKey] || [];
-        const job = jobsForDay[editingJob.jobIndex]?.job;
-        if (!job) throw new Error('Job not found');
-
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const job = bookings[editingJob.dateKey][editingJob.jobIndex];
         const totalDue = parseFloat(job.price);
         const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
         if (totalPaid >= totalDue) {
           alert('This job is already fully paid.');
           return;
         }
-
         const dateInput = document.getElementById('payment-date').value;
         if (!dateInput) {
           alert('Please select a payment date.');
           return;
         }
-
         const remaining = totalDue - totalPaid;
         if (!job.payments) job.payments = [];
         job.payments.push({
           amount: remaining.toFixed(2),
           date: dateInput
         });
-
-        const success = await updateJobInDB(editingJob.id, job);
+        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
-          closeModal();
           loadBookingsAndRender();
           alert('Marked as Paid in Full!');
         } else {
@@ -989,75 +909,13 @@
 
     async function deleteJob() {
       if (!editingJob || !confirm('Delete this job and all payments?')) return;
-
-      try {
-        const success = await deleteJobFromDB(editingJob.id);
-        if (success) {
-          const jobsForDay = allBookings[editingJob.dateKey] || [];
-          allBookings[editingJob.dateKey] = jobsForDay.filter((_, index) => index !== editingJob.jobIndex);
-          closeModal();
-          loadBookingsAndRender();
-          alert('Job deleted successfully!');
-        } else {
-          alert('Failed to delete job.');
-        }
-      } catch (err) {
-        console.error('Delete failed:', err);
-        alert('Failed to delete job. Please try again.');
+      const success = await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
+      if (success) {
+        closeModal();
+        loadBookingsAndRender();
+      } else {
+        alert('Failed to delete job.');
       }
-    }
-
-    // ====== EDIT JOB - FULL EDIT ======
-    function editJob() {
-      if (!editingJob) return;
-
-      const jobsForDay = allBookings[editingJob.dateKey] || [];
-      const job = jobsForDay[editingJob.jobIndex]?.job;
-      if (!job) return;
-
-      const customer = prompt('Edit customer name:', job.customer);
-      if (customer === null) return;
-
-      const address = prompt('Edit address:', job.address || '');
-      if (address === null) return;
-
-      const phone = prompt('Edit phone number:', job.phone || '');
-      if (phone === null) return;
-
-      const reason = prompt('Edit reason for callout:', job.reason || 'Call out charge');
-      if (reason === null) return;
-
-      const priceInput = prompt('Edit job price (£):', job.price);
-      if (priceInput === null) return;
-      if (isNaN(parseFloat(priceInput)) || parseFloat(priceInput) <= 0) {
-        alert('Invalid price entered.');
-        return;
-      }
-      const price = parseFloat(priceInput).toFixed(2);
-
-      const assigned = prompt('Edit assigned technician:', job.assigned);
-      if (assigned === null || !['Stephen', 'Darren'].includes(assigned)) {
-        alert('Invalid technician.');
-        return;
-      }
-
-      // Update job
-      job.customer = customer;
-      job.address = address;
-      job.phone = phone;
-      job.reason = reason;
-      job.price = price;
-      job.assigned = assigned;
-
-      updateJobInDB(editingJob.id, job).then(success => {
-        if (success) {
-          closeModal();
-          loadBookingsAndRender();
-          alert('Job updated successfully!');
-        } else {
-          alert('Failed to update job.');
-        }
-      });
     }
 
     // ====== DUPLICATE JOB - COPY NAME, ADDRESS, PHONE ONLY ======
@@ -1086,8 +944,10 @@
       document.getElementById('price').value = '';
       document.getElementById('assigned').value = '';
 
+      // Close search and focus on form
+      closeSearchResults();
       document.querySelector('.new-booking').scrollIntoView({ behavior: 'smooth' });
-      alert('Customer details copied! Now fill in the rest.');
+      alert('Customer details copied! Now fill in the job details.');
     }
 
     document.getElementById('booking-form').addEventListener('submit', async function(e) {
@@ -1097,7 +957,7 @@
       const address = document.getElementById('address').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const reason = document.getElementById('reason').value.trim();
-      const price = document.getElementById('price').value.trim();
+      const priceInput = document.getElementById('price').value.trim().toLowerCase();
       const assigned = document.getElementById('assigned').value;
 
       if (!customer || !assigned || !jobDateStr) {
@@ -1105,10 +965,15 @@
         return;
       }
 
-      if (price && (isNaN(parseFloat(price)) || parseFloat(price) <= 0)) {
-        alert('If price is entered, it must be a valid number greater than 0.');
-        return;
+      let price = '0.00';
+      if (priceInput && priceInput !== 'foc') {
+        if (isNaN(parseFloat(priceInput)) || parseFloat(priceInput) <= 0) {
+          alert('Please enter a valid job price, or type "foc" for free of charge.');
+          return;
+        }
+        price = parseFloat(priceInput).toFixed(2);
       }
+      // 'foc' keeps price as 0.00
 
       const jobDate = parseDate(jobDateStr);
       if (isNaN(jobDate.getTime())) {
@@ -1122,7 +987,7 @@
         address,
         phone,
         reason: reason || 'Call out charge',
-        price: price ? parseFloat(price).toFixed(2) : '0.00',
+        price: price,
         assigned,
         payments: [],
         invoiceNumber: getNextInvoiceNumber(),
@@ -1153,24 +1018,25 @@
       resultsList.innerHTML = '';
       try {
         const res = await fetch(API_BASE);
-        const rows = await res.json();
+        const bookings = await res.json();
 
         const results = [];
-        for (const row of rows) {
-          const job = row.job;
-          if (
-            job.customer.toLowerCase().includes(query) ||
-            (job.address && job.address.toLowerCase().includes(query)) ||
-            (job.phone && job.phone.toLowerCase().includes(query))
-          ) {
-            results.push({
-              job,
-              dateKey: row.date_key,
-              id: row.id,
-              displayDate: formatDate(parseDate(row.date_key))
-            });
-          }
-        }
+        Object.keys(bookings).forEach(dateKey => {
+          (bookings[dateKey] || []).forEach((job, index) => {
+            if (
+              job.customer.toLowerCase().includes(query) ||
+              (job.address && job.address.toLowerCase().includes(query)) ||
+              (job.phone && job.phone.toLowerCase().includes(query))
+            ) {
+              results.push({
+                job,
+                dateKey,
+                jobIndex: index,
+                displayDate: formatDate(parseDate(dateKey))
+              });
+            }
+          });
+        });
 
         if (results.length === 0) {
           resultsList.innerHTML = '<p>No matches found.</p>';
@@ -1189,16 +1055,8 @@
             li.onclick = () => {
               currentWeekStart = getWeekStart(parseDate(result.dateKey));
               loadBookingsAndRender();
-              setTimeout(() => {
-                const jobsForDay = allBookings[result.dateKey] || [];
-                const jobIndex = jobsForDay.findIndex(r => r.id === result.id);
-                if (jobIndex !== -1) {
-                  openEditModal(result.dateKey, jobIndex, result.id);
-                } else {
-                  alert('Job not found after refresh.');
-                }
-              }, 300);
-              document.getElementById('search-results').style.display = 'none';
+              setTimeout(() => openEditModal(result.dateKey, result.jobIndex), 300);
+              closeSearchResults();
             };
 
             // Add "Add to Date..." button
@@ -1241,138 +1099,150 @@
     // ====== PRINT RECEIPT ======
     function printReceipt() {
       if (!editingJob) return;
-      const jobsForDay = allBookings[editingJob.dateKey] || [];
-      const job = jobsForDay[editingJob.jobIndex]?.job;
-      if (!job) {
-        alert('Job not found. Cannot print.');
-        return;
-      }
-      const jobDate = parseDate(editingJob.dateKey);
-      const price = parseFloat(job.price).toFixed(2);
-      const jobDateFormatted = formatDate(jobDate);
-      const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-      const due = Math.max(0, parseFloat(price) - totalPaid).toFixed(2);
-      const paidItems = (job.payments || [])
-        .map(p => `Paid £${parseFloat(p.amount).toFixed(2)} on ${formatDate(parseDate(p.date))}`)
-        .join('<br>');
-      const addressLines = job.address
-        ? job.address.split('\n').map(line => line.trim()).filter(line => line).join('<br>')
-        : 'Not provided';
-      const printContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Receipt - ${job.invoiceNumber}</title>
-          <style>
-            body { font-family: Arial, sans-serif; color: #000; padding: 15mm; width: 210mm; margin: 0 auto; }
-            .logo { margin-bottom: 20px; }
-            .logo img { height: 60px; }
-            h2 { margin: 0; color: #000; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
-            td, th { padding: 8px; vertical-align: top; }
-            .bordered { border: 1px solid #000; }
-            .text-right { text-align: right; }
-            .text-center { text-align: center; }
-            .mt-20 { margin-top: 20px; }
-            .footer { position: absolute; bottom: 15mm; right: 15mm; font-size: 10pt; }
-            @page { margin: 0; size: A4; }
-          </style>
-        </head>
-        <body onload="window.print()">
-          <div class="logo">
-            <img src="https://acaciatv.netlify.app/assets/images/logo.svg" alt="Logo" />
-          </div>
-          <table>
-            <tr>
-              <td width="30%">
-                <strong>Acacia TV</strong><br>
-                Filer Road, Halfway<br>
-                Sheerness, Kent, ME12 3AL<br>
-                United Kingdom<br>
-                <strong>01795 873160</strong><br>
-                acaciatv@hotmail.co.uk<br>
-                <a href="https://acaciatv.netlify.app">https://acaciatv.netlify.app</a>
-              </td>
-              <td width="70%" class="text-right">
-                <h2>Invoice <span>${job.invoiceNumber || 'N/A'}</span></h2>
-                <table style="margin-top:10px;">
-                  <tr><td class="text-right"><strong>Invoice Date:</strong></td><td>${jobDateFormatted}</td></tr>
-                  <tr><td class="text-right"><strong>Due Date:</strong></td><td>${jobDateFormatted}</td></tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-          <table>
-            <tr>
-              <td width="50%">
-                <strong>Billed To:</strong><br>
-                ${job.customer}<br>
-                ${addressLines}<br>
-                ${job.phone ? job.phone : ''}
-              </td>
-              <td width="50%"></td>
-            </tr>
-          </table>
-          <table class="bordered">
-            <thead style="background:#f0f0f0;">
-              <tr>
-                <th align="left">Description</th>
-                <th class="text-center">Quantity</th>
-                <th class="text-right">Unit Price</th>
-                <th class="text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>${job.reason || 'Call out charge'}</td>
-                <td class="text-center">1.00</td>
-                <td class="text-right">£${price}</td>
-                <td class="text-right">£${price}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3" class="text-right"><strong>Total:</strong></td>
-                <td class="text-right"><strong>£${price}</strong></td>
-              </tr>
-            </tfoot>
-          </table>
-          ${paidItems ? `<div class="mt-20"><p><strong>Payments:</strong></p>${paidItems}</div>` : ''}
-          <p class="mt-20"><strong>Amount Due:</strong> £${due}</p>
-          <div class="footer">Page 1 / 1</div>
-        </body>
-        </html>
-      `;
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.focus();
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) {
+            alert('Job not found. Cannot print.');
+            return;
+          }
+          const jobDate = parseDate(editingJob.dateKey);
+          const price = parseFloat(job.price).toFixed(2);
+          const jobDateFormatted = formatDate(jobDate);
+          const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+          const due = Math.max(0, parseFloat(price) - totalPaid).toFixed(2);
+          const paidItems = (job.payments || [])
+            .map(p => `Paid £${parseFloat(p.amount).toFixed(2)} on ${formatDate(parseDate(p.date))}`)
+            .join('<br>');
+          const addressLines = job.address
+            ? job.address.split('\n').map(line => line.trim()).filter(line => line).join('<br>')
+            : 'Not provided';
+          const printContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <title>Receipt - ${job.invoiceNumber}</title>
+              <style>
+                body { font-family: Arial, sans-serif; color: #000; padding: 15mm; width: 210mm; margin: 0 auto; }
+                .logo { margin-bottom: 20px; }
+                .logo img { height: 60px; }
+                h2 { margin: 0; color: #000; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
+                td, th { padding: 8px; vertical-align: top; }
+                .bordered { border: 1px solid #000; }
+                .text-right { text-align: right; }
+                .text-center { text-align: center; }
+                .mt-20 { margin-top: 20px; }
+                .footer { position: absolute; bottom: 15mm; right: 15mm; font-size: 10pt; }
+                @page { margin: 0; size: A4; }
+              </style>
+            </head>
+            <body onload="window.print()">
+              <div class="logo">
+                <img src="https://acaciatv.netlify.app/assets/images/logo.svg" alt="Logo" />
+              </div>
+              <table>
+                <tr>
+                  <td width="30%">
+                    <strong>Acacia TV</strong><br>
+                    Filer Road, Halfway<br>
+                    Sheerness, Kent, ME12 3AL<br>
+                    United Kingdom<br>
+                    <strong>01795 873160</strong><br>
+                    acaciatv@hotmail.co.uk<br>
+                    <a href="https://acaciatv.netlify.app">https://acaciatv.netlify.app</a>
+                  </td>
+                  <td width="70%" class="text-right">
+                    <h2>Invoice <span>${job.invoiceNumber || 'N/A'}</span></h2>
+                    <table style="margin-top:10px;">
+                      <tr><td class="text-right"><strong>Invoice Date:</strong></td><td>${jobDateFormatted}</td></tr>
+                      <tr><td class="text-right"><strong>Due Date:</strong></td><td>${jobDateFormatted}</td></tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <table>
+                <tr>
+                  <td width="50%">
+                    <strong>Billed To:</strong><br>
+                    ${job.customer}<br>
+                    ${addressLines}<br>
+                    ${job.phone ? job.phone : ''}
+                  </td>
+                  <td width="50%"></td>
+                </tr>
+              </table>
+              <table class="bordered">
+                <thead style="background:#f0f0f0;">
+                  <tr>
+                    <th align="left">Description</th>
+                    <th class="text-center">Quantity</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>${job.reason || 'Call out charge'}</td>
+                    <td class="text-center">1.00</td>
+                    <td class="text-right">£${price}</td>
+                    <td class="text-right">£${price}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                    <td class="text-right"><strong>£${price}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+              ${paidItems ? `<div class="mt-20"><p><strong>Payments:</strong></p>${paidItems}</div>` : ''}
+              <p class="mt-20"><strong>Amount Due:</strong> £${due}</p>
+              <div class="footer">Page 1 / 1</div>
+            </body>
+            </html>
+          `;
+          const printWindow = window.open('', '_blank');
+          printWindow.document.write(printContent);
+          printWindow.document.close();
+          printWindow.focus();
+        })
+        .catch(() => {
+          alert('Failed to load job data for printing.');
+        });
     }
 
     // ====== CALL CUSTOMER ======
     function callCustomer() {
       if (!editingJob) return;
-      const jobsForDay = allBookings[editingJob.dateKey] || [];
-      const job = jobsForDay[editingJob.jobIndex]?.job;
-      if (!job) {
-        alert('Job not found.');
-        return;
-      }
-      const phone = job.phone?.trim();
-      if (!phone) {
-        alert('No phone number on file for this customer.');
-        return;
-      }
-      const telSafe = phone.replace(/[^+\d]/g, '');
-      if (!telSafe) {
-        alert('Phone number is not valid.');
-        return;
-      }
-      const confirmed = confirm(`Call ${phone}?`);
-      if (confirmed) {
-        window.location.href = `tel:${telSafe}`;
-      }
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) {
+            alert('Job not found.');
+            return;
+          }
+          const phone = job.phone?.trim();
+          if (!phone) {
+            alert('No phone number on file for this customer.');
+            return;
+          }
+          const telSafe = phone.replace(/[^+\d]/g, '');
+          if (!telSafe) {
+            alert('Phone number is not valid.');
+            return;
+          }
+          const confirmed = confirm(`Call ${phone}?`);
+          if (confirmed) {
+            window.location.href = `tel:${telSafe}`;
+          }
+        })
+        .catch(() => {
+          alert('Failed to load customer data.');
+        });
     }
 
     // ====== INIT ON LOAD ======
