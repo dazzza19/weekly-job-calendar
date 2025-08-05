@@ -34,6 +34,7 @@ export async function handler(event, context) {
     const method = event.httpMethod;
     const body = event.body ? JSON.parse(event.body) : {};
 
+    // GET: Return all jobs
     if (method === 'GET') {
       const res = await client.query('SELECT id, date_key, job FROM job_bookings ORDER BY date_key');
       const bookings = {};
@@ -48,6 +49,7 @@ export async function handler(event, context) {
       };
     }
 
+    // POST: Add a new job
     if (method === 'POST' && body.type === 'add') {
       const { date_key, job } = body;
       const id = job.id || `${date_key}-${Date.now()}`;
@@ -61,6 +63,7 @@ export async function handler(event, context) {
       };
     }
 
+    // POST: Update a job
     if (method === 'POST' && body.type === 'update') {
       const { date_key, id, job } = body;
       await client.query(
@@ -73,6 +76,7 @@ export async function handler(event, context) {
       };
     }
 
+    // POST: Delete a job
     if (method === 'POST' && body.type === 'delete') {
       const { id } = body;
       await client.query('DELETE FROM job_bookings WHERE id = $1', [id]);
@@ -90,7 +94,7 @@ export async function handler(event, context) {
     console.error('Database error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error', message: error.message }),
+      body: JSON.stringify({ error: 'Internal server error' }),
     };
   }
 }
