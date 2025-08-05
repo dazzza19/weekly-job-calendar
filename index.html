@@ -1007,6 +1007,7 @@
       }
     }
 
+    // ====== EDIT JOB - FULL EDIT ======
     function editJob() {
       if (!editingJob) return;
 
@@ -1016,6 +1017,15 @@
 
       const customer = prompt('Edit customer name:', job.customer);
       if (customer === null) return;
+
+      const address = prompt('Edit address:', job.address || '');
+      if (address === null) return;
+
+      const phone = prompt('Edit phone number:', job.phone || '');
+      if (phone === null) return;
+
+      const reason = prompt('Edit reason for callout:', job.reason || 'Call out charge');
+      if (reason === null) return;
 
       const priceInput = prompt('Edit job price (£):', job.price);
       if (priceInput === null) return;
@@ -1031,7 +1041,11 @@
         return;
       }
 
+      // Update job
       job.customer = customer;
+      job.address = address;
+      job.phone = phone;
+      job.reason = reason;
       job.price = price;
       job.assigned = assigned;
 
@@ -1046,8 +1060,8 @@
       });
     }
 
-    // ====== DUPLICATE JOB TO SPECIFIC DATE ======
-    function duplicateJob(jobData, sourceDateKey) {
+    // ====== DUPLICATE JOB - COPY NAME, ADDRESS, PHONE ONLY ======
+    function duplicateJob(jobData) {
       const chosenDate = prompt(
         `Enter date for new job (YYYY-MM-DD)\n\nLeave empty for today.`,
         formatKey(new Date())
@@ -1055,26 +1069,25 @@
 
       if (!chosenDate) return;
 
-      // Validate date
       const parsedDate = parseDate(chosenDate);
       if (isNaN(parsedDate.getTime())) {
         alert('Invalid date format. Use YYYY-MM-DD.');
         return;
       }
 
-      // Pre-fill form
+      // Pre-fill only customer info
       document.getElementById('job-date').value = chosenDate;
       document.getElementById('customer-name').value = jobData.customer || '';
       document.getElementById('address').value = jobData.address || '';
       document.getElementById('phone').value = jobData.phone || '';
-      document.getElementById('reason').value = jobData.reason || '';
-      document.getElementById('price').value = parseFloat(jobData.price) || '';
-      document.getElementById('assigned').value = jobData.assigned || '';
 
-      // Scroll to form
+      // Clear other fields for manual entry
+      document.getElementById('reason').value = '';
+      document.getElementById('price').value = '';
+      document.getElementById('assigned').value = '';
+
       document.querySelector('.new-booking').scrollIntoView({ behavior: 'smooth' });
-
-      alert(`Job copied from ${formatDate(parseDate(sourceDateKey))}!\nEdit and save the new job.`);
+      alert('Customer details copied! Now fill in the rest.');
     }
 
     document.getElementById('booking-form').addEventListener('submit', async function(e) {
@@ -1087,8 +1100,13 @@
       const price = document.getElementById('price').value.trim();
       const assigned = document.getElementById('assigned').value;
 
-      if (!customer || !assigned || !jobDateStr || !price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
-        alert('Please fill in all required fields with valid data.');
+      if (!customer || !assigned || !jobDateStr) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+
+      if (price && (isNaN(parseFloat(price)) || parseFloat(price) <= 0)) {
+        alert('If price is entered, it must be a valid number greater than 0.');
         return;
       }
 
@@ -1104,7 +1122,7 @@
         address,
         phone,
         reason: reason || 'Call out charge',
-        price: parseFloat(price).toFixed(2),
+        price: price ? parseFloat(price).toFixed(2) : '0.00',
         assigned,
         payments: [],
         invoiceNumber: getNextInvoiceNumber(),
@@ -1196,7 +1214,7 @@
             addButton.style.cursor = 'pointer';
             addButton.onclick = (e) => {
               e.stopPropagation();
-              duplicateJob(result.job, result.dateKey);
+              duplicateJob(result.job);
             };
             li.appendChild(addButton);
 
