@@ -2,198 +2,978 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Booking and Invoicing System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weekly Job Calendar</title>
   <style>
-    /* Your existing CSS here */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #8e2de2, #4a00e0, #c77d87);
+      color: white;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    /* Header */
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      color: black;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+      width: 100%;
+    }
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .logo {
+      height: 60px;
+      display: flex;
+      align-items: center;
+    }
+    .logo img {
+      height: 100%;
+      border-radius: 8px;
+    }
+    .earnings {
+      background: #e74c3c;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 1.3em;
+      margin: 10px 0;
+      text-align: center;
+    }
+    .earnings span {
+      font-size: 2em;
+      font-weight: bold;
+      color: #ffcc00;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    .controls button {
+      padding: 10px 20px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .controls button:hover {
+      background: #0056b3;
+    }
+    /* Search Bar */
+    #global-search {
+      width: 70%;
+      max-width: 500px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      margin: 10px 0;
+    }
+    /* New Job Form */
+    .new-booking {
+      background: white;
+      color: black;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+      width: 320px;
+    }
+    .new-booking h2 {
+      margin-top: 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+      color: #333;
+    }
+    .new-booking label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: 600;
+    }
+    .new-booking input, .new-booking textarea, .new-booking select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1em;
+    }
+    .new-booking textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .new-booking button {
+      background: #28a745;
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      width: 100%;
+      font-size: 1.1em;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    .new-booking button:hover {
+      background: #218838;
+    }
+    /* Weekly Schedule */
+    .weekly-schedule {
+      background: white;
+      color: black;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+      flex: 1;
+      min-width: 600px;
+    }
+    .weekly-schedule h2 {
+      margin-top: 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+      color: #333;
+    }
+    .days-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 12px;
+      align-items: stretch;
+      grid-auto-rows: minmax(250px, auto);
+    }
+    .day {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+    }
+    .day-name {
+      font-weight: bold;
+      font-size: 0.95em;
+      margin-bottom: 5px;
+    }
+    .day-date {
+      font-size: 1.1em;
+      color: #007bff;
+      margin-bottom: 10px;
+    }
+    .job-list {
+      font-size: 0.85em;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .job-item {
+      margin-bottom: 6px;
+      padding: 5px;
+      background: #f1f1f1;
+      border-left: 3px solid #007bff;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .job-paid {
+      border-left-color: #28a745;
+      background: #f0f8f0;
+    }
+    .job-partial {
+      border-left-color: #ffc107;
+      background: #fffbe6;
+    }
+    .job-unpaid {
+      border-left-color: #dc3545;
+      background: #fff5f5;
+      color: #c00;
+    }
+    .job-customer {
+      font-weight: bold;
+    }
+    .job-price {
+      font-weight: bold;
+      font-size: 0.9em;
+      color: #000;
+    }
+    .job-status {
+      font-size: 0.75em;
+      padding: 2px 5px;
+      border-radius: 3px;
+      display: inline-block;
+      margin-top: 2px;
+    }
+    .status-paid {
+      background: #28a745; color: white;
+    }
+    .status-partial {
+      background: #ffc107; color: black;
+    }
+    .status-unpaid {
+      background: #dc3545; color: white;
+    }
+    .job-assigned {
+      font-size: 0.8em;
+      color: #555;
+    }
+    .no-jobs {
+      color: #aaa;
+      font-style: italic;
+    }
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: flex-start;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      overflow: hidden;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px 5px;
+    }
+    .modal-header h3 {
+      margin: 0;
+      color: #333;
+      font-size: 1.1em;
+    }
+    .close-modal {
+      font-size: 1.5em;
+      color: #aaa;
+      cursor: pointer;
+    }
+    .close-modal:hover {
+      color: #000;
+    }
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 20px;
+      font-size: 0.95em;
+    }
+    .modal-body p {
+      margin: 4px 0;
+      color: #333;
+    }
+    .modal-body strong {
+      color: #000;
+    }
+    .payment-list {
+      margin: 10px 0;
+      font-size: 0.85em;
+    }
+    .payment-item {
+      padding: 4px 6px;
+      background: #f8f9fa;
+      margin-bottom: 3px;
+      border-radius: 3px;
+      color: #333;
+    }
+    .form-group {
+      margin: 8px 0;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 2px;
+      font-weight: 600;
+      font-size: 0.9em;
+      color: #333;
+    }
+    .form-group input, .form-group textarea {
+      padding: 6px;
+      font-size: 0.95em;
+    }
+    /* BUTTON LAYOUT: All visible, responsive grid */
+    .modal-footer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px 20px;
+      background: white;
+      border-top: 1px solid #dee2e6;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+    }
+    .modal-footer button {
+      padding: 12px 5px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85em;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      height: 50px;
+      min-height: 50px;
+    }
+    .btn-call {
+      background: #28a745;
+      color: white;
+    }
+    .btn-print {
+      background: #6f42c1;
+      color: white;
+    }
+    .btn-delete {
+      background: #dc3545;
+      color: white;
+    }
+    .btn-cancel {
+      background: #6c757d;
+      color: white;
+    }
+    .btn-add-payment {
+      background: #17a2b8;
+      color: white;
+    }
+    .btn-paid-full {
+      background: #28a745;
+      color: white;
+    }
+    .btn-edit {
+      background: #ffc107;
+      color: black;
+    }
+    /* Search Results */
+    #search-results {
+      display: none;
+      position: fixed;
+      top: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 800px;
+      max-height: 400px;
+      overflow-y: auto;
+      background: white;
+      color: black;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      z-index: 1000;
+      padding: 15px;
+      font-size: 0.95em;
+    }
+    #search-results h3 {
+      margin-top: 0;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+    /* Print Receipt */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #receipt, #receipt * {
+        visibility: visible;
+        color: #000 !important;
+      }
+      #receipt {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        padding: 15mm;
+        box-sizing: border-box;
+      }
+      .no-print {
+        display: none !important;
+      }
+      @page {
+        margin: 0;
+        size: A4;
+      }
+    }
+    /* Password Screen */
+    #password-screen {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      flex-direction: column;
+      text-align: center;
+      padding: 20px;
+    }
+    #password-screen h2 {
+      margin-top: 0;
+      color: #fff;
+    }
+    #password-screen p {
+      max-width: 500px;
+    }
+    #password-screen input {
+      padding: 12px;
+      width: 80%;
+      max-width: 400px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 1.1em;
+    }
+    #password-screen button {
+      padding: 12px 25px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1.1em;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #password-screen button:hover {
+      background: #218838;
+    }
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      .container {
+        flex-direction: column;
+      }
+      .new-booking, .weekly-schedule {
+        width: 100%;
+        min-width: auto;
+      }
+      .days-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .day {
+        min-height: 150px;
+      }
+      .modal-footer {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .modal-footer button {
+        height: 48px;
+        font-size: 0.8em;
+      }
+    }
   </style>
 </head>
 <body>
-  <!-- Your existing HTML layout here -->
-
-  <!-- Booking Form -->
-  <form id="booking-form">
-    <input type="date" id="job-date" required />
-    <input type="text" id="customer-name" placeholder="Customer Name" required />
-    <textarea id="address" placeholder="Address"></textarea>
-    <input type="tel" id="phone" placeholder="Phone Number" />
-    <textarea id="reason" placeholder="Reason for Callout"></textarea>
-    <input type="number" step="0.01" id="price" placeholder="Price (£)" required />
-    <select id="assigned" required>
-      <option value="">Assign Technician</option>
-      <!-- Technician options -->
-    </select>
-    <button type="submit">Add Job</button>
-  </form>
-
-  <!-- Job List Container -->
-  <div id="jobs-container"></div>
-
-  <!-- Search -->
-  <input type="search" id="global-search" placeholder="Search jobs..." />
-  <div id="search-results" style="display:none;">
-    <div id="search-results-list"></div>
+  <!-- Password Screen -->
+  <div id="password-screen">
+    <h2>🔒 Job Calendar</h2>
+    <p id="setup-prompt">Set a password to secure your calendar.</p>
+    <input type="password" id="password-input" placeholder="Enter password" />
+    <input type="password" id="password-confirm" placeholder="Confirm password" style="display:none;" />
+    <button onclick="window.checkPassword()">Unlock</button>
   </div>
-
-  <!-- Payment Date Input for Mark Paid In Full -->
-  <input type="date" id="payment-date" />
-
+  <!-- Main App -->
+  <div id="main-app" class="no-print" style="display:none;">
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-content">
+          <div class="logo">
+            <img src="https://acaciatv.netlify.app/assets/images/logo.svg" alt="Acacia TV Logo" />
+          </div>
+          <div style="flex: 1; margin-left: 20px; min-width: 250px;">
+            <div class="earnings">
+              This Week's Payments Received: <span id="total-earnings">£0.00</span>
+            </div>
+            <input type="text" id="global-search" placeholder="🔍 Search by name, address, or phone..." />
+            <div class="controls">
+              <button onclick="prevWeek()">Previous Week</button>
+              <span id="current-week-range" style="font-weight:bold;">28 Jul - 03 Aug 2025</span>
+              <button onclick="nextWeek()">Next Week</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- New Job Form -->
+      <div class="new-booking">
+        <h2>New Job Booking</h2>
+        <form id="booking-form">
+          <label for="job-date">Date *</label>
+          <input type="date" id="job-date" required />
+          <label for="customer-name">Customer Name *</label>
+          <input type="text" id="customer-name" required />
+          <label for="address">Address</label>
+          <textarea id="address" placeholder="Street, City, etc."></textarea>
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" placeholder="e.g. 07123 456789" />
+          <label for="reason">Reason for Callout</label>
+          <textarea id="reason" placeholder="e.g. Call out charge"></textarea>
+          <label for="price">Total Job Price (£)</label>
+          <input type="number" step="0.01" id="price" placeholder="0.00" required />
+          <label for="assigned">Assigned To</label>
+          <select id="assigned" required>
+            <option value="">-- Select Technician --</option>
+            <option value="Stephen">Stephen</option>
+            <option value="Darren">Darren</option>
+          </select>
+          <button type="submit">Add Job</button>
+        </form>
+      </div>
+      <!-- Weekly Schedule -->
+      <div class="weekly-schedule">
+        <h2>Weekly Schedule</h2>
+        <div class="days-grid" id="days-grid">
+          <!-- Generated by JS -->
+        </div>
+      </div>
+    </div>
+    <!-- Edit Job Modal -->
+    <div id="edit-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Job: <span id="modal-customer"></span></h3>
+          <span class="close-modal" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p><strong>Date:</strong> <span id="modal-date"></span></p>
+          <p><strong>Total Due:</strong> £<span id="modal-total">0.00</span></p>
+          <p><strong>Total Paid:</strong> £<span id="modal-paid">0.00</span></p>
+          <p><strong>Outstanding:</strong> £<span id="modal-outstanding">0.00</span></p>
+          <p><strong>Assigned To:</strong> <span id="modal-assigned"></span></p>
+          <p><strong>Invoice #:</strong> <span id="modal-invoice">10001</span></p>
+          <hr style="margin: 10px 0;">
+          <h4 style="margin: 5px 0 8px; font-size: 1em;">Payments Received</h4>
+          <div class="payment-list" id="payment-list">
+            <!-- Payments will be added here -->
+          </div>
+          <div class="form-group">
+            <label for="new-payment">Add Payment (£)</label>
+            <input type="number" id="new-payment" step="0.01" placeholder="e.g. 50.00" />
+          </div>
+          <div class="form-group">
+            <label for="payment-date">Payment Date</label>
+            <input type="date" id="payment-date" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-call" onclick="callCustomer()">
+            <span>📞</span>
+            <span>Call</span>
+          </button>
+          <button class="btn-print" onclick="printReceipt()">
+            <span>🖨️</span>
+            <span>Print</span>
+          </button>
+          <button class="btn-add-payment" onclick="addPayment()">
+            <span>💰</span>
+            <span>Add Payment</span>
+          </button>
+          <button class="btn-paid-full" onclick="markPaidInFull()">
+            <span>✅</span>
+            <span>Paid Full</span>
+          </button>
+          <button class="btn-edit" onclick="openEditJobForm()">
+            <span>✏️</span>
+            <span>Edit</span>
+          </button>
+          <button class="btn-delete" onclick="deleteJob()">
+            <span>🗑️</span>
+            <span>Delete</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Search Results -->
+    <div id="search-results">
+      <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+        <h3>Search Results</h3>
+        <span onclick="closeSearchResults()" style="cursor:pointer; font-weight:bold;">✕</span>
+      </div>
+      <div id="search-results-list">
+        <!-- Results will appear here -->
+      </div>
+    </div>
+  </div>
+  <!-- Hidden Receipt for Printing -->
+  <div id="receipt" style="display:none;"></div>
   <script>
-    const API_BASE = '/api/bookings'; // Your API endpoint
+    // ====== API CONFIG ======
+    const API_BASE = 'https://weekly-job-calendar.netlify.app/.netlify/functions/bookings';
+    // ====== STATE ======
+    let currentWeekStart = new Date();
+    currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay() + (currentWeekStart.getDay() === 0 ? -6 : 1));
+    currentWeekStart.setHours(0, 0, 0, 0);
+    let editingJob = null;
 
-    // Generate unique ID for each job
-    function generateJobId() {
-      return crypto.randomUUID();
+    // ====== PASSWORD SYSTEM ======
+    window.checkPassword = function() {
+      const passwordInput = document.getElementById('password-input');
+      const passwordConfirm = document.getElementById('password-confirm');
+      const password = passwordInput.value.trim();
+      const savedHash = localStorage.getItem('calendarPassword');
+      if (!savedHash) {
+        // First-time setup
+        const confirm = passwordConfirm.value.trim();
+        if (password.length < 4) return alert('Password must be at least 4 characters.');
+        if (password !== confirm) return alert('Passwords do not match.');
+        localStorage.setItem('calendarPassword', btoa(password));
+        if (!localStorage.getItem('nextInvoiceNumber')) localStorage.setItem('nextInvoiceNumber', '10001');
+        showMainApp();
+      } else {
+        // Login attempt
+        if (btoa(password) === savedHash) {
+          showMainApp();
+        } else {
+          alert('Incorrect password.');
+          passwordInput.value = '';
+        }
+      }
+    };
+
+    function showMainApp() {
+      document.getElementById('password-screen').style.display = 'none';
+      document.getElementById('main-app').style.display = 'block';
+      loadBookingsAndRender();
     }
 
-    // Parse date from string (yyyy-mm-dd)
-    function parseDate(dateStr) {
-      return new Date(dateStr);
-    }
-
-    // Format date key (yyyy-mm-dd)
-    function formatKey(date) {
-      const y = date.getFullYear();
-      const m = (date.getMonth() + 1).toString().padStart(2, '0');
-      const d = date.getDate().toString().padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    }
-
-    // Format date display (e.g. dd/mm/yyyy)
-    function formatDate(date) {
-      const d = date.getDate().toString().padStart(2, '0');
-      const m = (date.getMonth() + 1).toString().padStart(2, '0');
-      const y = date.getFullYear();
-      return `${d}/${m}/${y}`;
-    }
-
-    // Load bookings from API and render grouped by date
+    // ====== DATABASE CALLS ======
     async function loadBookingsAndRender() {
       try {
         const res = await fetch(API_BASE);
         const bookings = await res.json();
-        renderJobs(bookings);
+        renderWeek(bookings);
       } catch (err) {
-        alert('Failed to load jobs.');
+        console.error('Failed to load data:', err);
+        alert('Could not connect to database.');
       }
     }
 
-    // Render jobs grouped by date with unique IDs
-    function renderJobs(bookings) {
-      const container = document.getElementById('jobs-container');
-      container.innerHTML = '';
-
-      const dates = Object.keys(bookings).sort();
-
-      if (dates.length === 0) {
-        container.innerHTML = '<p>No jobs found.</p>';
-        return;
-      }
-
-      dates.forEach(dateKey => {
-        const jobs = bookings[dateKey];
-        const dateHeading = document.createElement('h3');
-        dateHeading.textContent = formatDate(parseDate(dateKey));
-        container.appendChild(dateHeading);
-
-        const ul = document.createElement('ul');
-        jobs.forEach(job => {
-          const li = document.createElement('li');
-          li.textContent = `${job.customer} - £${job.price} - Assigned: ${job.assigned}`;
-          // Add buttons for edit/delete/payment etc with job.id
-          const deleteBtn = document.createElement('button');
-          deleteBtn.textContent = 'Delete';
-          deleteBtn.onclick = () => deleteJobById(job.id, dateKey);
-
-          li.appendChild(deleteBtn);
-          ul.appendChild(li);
-        });
-
-        container.appendChild(ul);
+    async function addJobToDB(dateKey, job) {
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'add', date_key: dateKey, job })
       });
+      return res.ok;
     }
 
-    // Add job to DB without overwriting other jobs
-    async function addJobToDB(dateKey, newJob) {
-      try {
-        const res = await fetch(API_BASE);
-        let bookings = await res.json();
-
-        if (!bookings[dateKey]) {
-          bookings[dateKey] = [];
-        }
-
-        bookings[dateKey].push(newJob);
-
-        // Save updated bookings to server
-        const saveRes = await fetch(API_BASE, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bookings),
-        });
-        return saveRes.ok;
-      } catch (err) {
-        return false;
-      }
+    async function updateJobInDB(dateKey, jobIndex, job) {
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'update', date_key: dateKey, jobIndex, job })
+      });
+      return res.ok;
     }
 
-    // Delete job by unique ID
-    async function deleteJobById(jobId, dateKey) {
-      if (!confirm('Delete this job?')) return;
+    async function deleteJobFromDB(dateKey, jobIndex) {
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'delete', date_key: dateKey, jobIndex })
+      });
+      return res.ok;
+    }
+
+    // ====== UTILS ======
+    function formatDate(date) {
+      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    }
+
+    function formatKey(date) {
+      const d = String(date.getDate()).padStart(2, '0');
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const y = date.getFullYear();
+      return `${y}-${m}-${d}`;
+    }
+
+    function parseDate(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function getWeekStart(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      d.setDate(diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function getNextInvoiceNumber() {
+      const num = parseInt(localStorage.getItem('nextInvoiceNumber') || '10001');
+      localStorage.setItem('nextInvoiceNumber', (num + 1).toString());
+      return num.toString();
+    }
+
+    // ====== UI FUNCTIONS ======
+    function renderWeek(bookings = {}) {
+      const daysGrid = document.getElementById('days-grid');
+      if (!daysGrid) return;
+      daysGrid.innerHTML = '';
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      let totalEarnings = 0;
+      const weekStart = new Date(currentWeekStart);
+      const weekEnd = new Date(currentWeekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      days.forEach((dayName, i) => {
+        const dayDate = new Date(currentWeekStart);
+        dayDate.setDate(currentWeekStart.getDate() + i);
+        const dayKey = formatKey(dayDate);
+        const dayFormatted = formatDate(dayDate);
+        const dayBookings = bookings[dayKey] || [];
+        const dayEl = document.createElement('div');
+        dayEl.className = 'day';
+
+        const jobsHtml = dayBookings.length > 0
+          ? dayBookings.map((job, index) => {
+              const thisWeekPayments = (job.payments || [])
+                .filter(p => {
+                  const pDate = parseDate(p.date);
+                  return pDate >= weekStart && pDate <= weekEnd;
+                })
+                .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+              totalEarnings += thisWeekPayments;
+
+              const totalDue = parseFloat(job.price) || 0;
+              const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+              const isPaid = totalPaid >= totalDue;
+              const isPartial = totalPaid > 0 && totalPaid < totalDue;
+
+              let statusText = 'Unpaid';
+              let statusClass = 'status-unpaid';
+              let jobClass = 'job-unpaid';
+              if (isPaid) {
+                statusText = 'Paid';
+                statusClass = 'status-paid';
+                jobClass = 'job-paid';
+              } else if (isPartial) {
+                statusText = 'Partial';
+                statusClass = 'status-partial';
+                jobClass = 'job-partial';
+              }
+
+              return `
+                <div class="job-item ${jobClass}" onclick="event.stopPropagation(); openEditModal('${dayKey}', ${index});">
+                  <div class="job-customer">${job.customer}</div>
+                  <div class="job-price">£${totalPaid.toFixed(2)} / £${totalDue.toFixed(2)}</div>
+                  <span class="job-status ${statusClass}">${statusText}</span>
+                  <div class="job-assigned">→ ${job.assigned}</div>
+                </div>
+              `;
+            }).join('')
+          : '<div class="no-jobs">No jobs scheduled</div>';
+
+        dayEl.innerHTML = `
+          <div class="day-name">${dayName}</div>
+          <div class="day-date">${dayFormatted}</div>
+          <div class="job-list" onclick="event.stopPropagation();">
+            ${jobsHtml}
+          </div>
+        `;
+
+        dayEl.onclick = () => {
+          if (dayBookings.length === 1) {
+            openEditModal(dayKey, 0);
+          } else if (dayBookings.length > 1) {
+            alert('Multiple jobs. Click on a specific job.');
+          }
+        };
+        daysGrid.appendChild(dayEl);
+      });
+
+      document.getElementById('total-earnings').textContent = `£${totalEarnings.toFixed(2)}`;
+      const start = formatDate(currentWeekStart);
+      const end = new Date(currentWeekStart);
+      end.setDate(end.getDate() + 6);
+      document.getElementById('current-week-range').textContent = `${start} - ${formatDate(end)}`;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const jobDateInput = document.getElementById('job-date');
+      if (jobDateInput) jobDateInput.value = formatKey(today);
+    }
+
+    function prevWeek() {
+      currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+      loadBookingsAndRender();
+    }
+
+    function nextWeek() {
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      loadBookingsAndRender();
+    }
+
+    async function openEditModal(dateKey, jobIndex) {
       try {
         const res = await fetch(API_BASE);
         const bookings = await res.json();
-
-        if (!bookings[dateKey]) return alert('Date not found.');
-
-        const jobs = bookings[dateKey];
-        const index = jobs.findIndex(j => j.id === jobId);
-        if (index === -1) return alert('Job not found.');
-
-        jobs.splice(index, 1);
-
-        // If no jobs remain for date, remove the date key
-        if (jobs.length === 0) {
-          delete bookings[dateKey];
+        const job = bookings[dateKey]?.[jobIndex];
+        if (!job) {
+          alert('Job not found or has been deleted.');
+          loadBookingsAndRender();
+          return;
         }
+        const jobDate = parseDate(dateKey);
+        editingJob = { dateKey, jobIndex };
 
-        const saveRes = await fetch(API_BASE, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bookings),
-        });
+        document.getElementById('modal-customer').textContent = job.customer;
+        document.getElementById('modal-date').textContent = formatDate(jobDate);
+        document.getElementById('modal-total').textContent = parseFloat(job.price).toFixed(2);
+        document.getElementById('modal-assigned').textContent = job.assigned;
 
-        if (saveRes.ok) {
+        if (!job.payments) job.payments = [];
+        const totalPaid = job.payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+        const outstanding = (parseFloat(job.price) || 0) - totalPaid;
+
+        document.getElementById('modal-paid').textContent = totalPaid.toFixed(2);
+        document.getElementById('modal-outstanding').textContent = outstanding.toFixed(2);
+        document.getElementById('modal-invoice').textContent = job.invoiceNumber || 'N/A';
+
+        const paymentList = document.getElementById('payment-list');
+        paymentList.innerHTML = job.payments.length > 0
+          ? job.payments.map(p => `<div class="payment-item">£${parseFloat(p.amount).toFixed(2)} on ${p.date}</div>`).join('')
+          : '<div class="payment-item">No payments recorded</div>';
+
+        const today = new Date();
+        document.getElementById('payment-date').value = formatKey(today);
+        document.getElementById('edit-modal').style.display = 'flex';
+      } catch (err) {
+        alert('Failed to load job details.');
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('edit-modal').style.display = 'none';
+      editingJob = null;
+    }
+
+    async function addPayment() {
+      const amountInput = document.getElementById('new-payment');
+      const dateInput = document.getElementById('payment-date');
+      const amount = parseFloat(amountInput.value);
+      const date = dateInput.value;
+
+      if (isNaN(amount) || amount <= 0) return alert('Please enter a valid payment amount.');
+      if (!date) return alert('Please select a payment date.');
+
+      try {
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const job = bookings[editingJob.dateKey][editingJob.jobIndex];
+        if (!job.payments) job.payments = [];
+        job.payments.push({ amount: amount.toFixed(2), date });
+
+        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
+        if (success) {
           loadBookingsAndRender();
         } else {
-          alert('Failed to delete job.');
+          alert('Failed to save payment.');
         }
       } catch (err) {
+        alert('Network error. Please try again.');
+      }
+    }
+
+    async function markPaidInFull() {
+      if (!editingJob) return;
+      try {
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const job = bookings[editingJob.dateKey][editingJob.jobIndex];
+        const totalDue = parseFloat(job.price);
+        const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+        if (totalPaid >= totalDue) {
+          alert('This job is already fully paid.');
+          return;
+        }
+
+        const dateInput = document.getElementById('payment-date').value;
+        if (!dateInput) {
+          alert('Please select a payment date.');
+          return;
+        }
+
+        const remaining = totalDue - totalPaid;
+        if (!job.payments) job.payments = [];
+        job.payments.push({
+          amount: remaining.toFixed(2),
+          date: dateInput
+        });
+
+        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
+        if (success) {
+          loadBookingsAndRender();
+          alert('Marked as Paid in Full!');
+        } else {
+          alert('Failed to update job.');
+        }
+      } catch (err) {
+        alert('Failed to update job.');
+      }
+    }
+
+    async function deleteJob() {
+      if (!editingJob || !confirm('Delete this job and all payments?')) return;
+      const success = await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
+      if (success) {
+        closeModal();
+        loadBookingsAndRender();
+      } else {
         alert('Failed to delete job.');
       }
     }
 
-    // Get next invoice number (you might want to improve this for concurrency)
-    function getNextInvoiceNumber() {
-      let lastInvoice = localStorage.getItem('lastInvoiceNumber') || '1000';
-      let next = (parseInt(lastInvoice, 10) + 1).toString();
-      localStorage.setItem('lastInvoiceNumber', next);
-      return next;
-    }
-
-    // On form submit - add job with unique ID
-    document.getElementById('booking-form').addEventListener('submit', async function (e) {
+    document.getElementById('booking-form').addEventListener('submit', async function(e) {
       e.preventDefault();
-
       const jobDateStr = document.getElementById('job-date').value;
       const customer = document.getElementById('customer-name').value.trim();
       const address = document.getElementById('address').value.trim();
       const phone = document.getElementById('phone').value.trim();
-      const reason = document.getElementById('reason').value.trim() || 'Call out charge';
-      const priceStr = document.getElementById('price').value.trim();
+      const reason = document.getElementById('reason').value.trim();
+      const price = document.getElementById('price').value.trim();
       const assigned = document.getElementById('assigned').value;
 
-      if (!customer || !assigned || !jobDateStr || !priceStr || isNaN(parseFloat(priceStr)) || parseFloat(priceStr) <= 0) {
+      if (!customer || !assigned || !jobDateStr || !price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
         alert('Please fill in all required fields with valid data.');
         return;
       }
@@ -205,18 +985,16 @@
       }
 
       const dayKey = formatKey(jobDate);
-
       const newJob = {
-        id: generateJobId(),
         customer,
         address,
         phone,
-        reason,
-        price: parseFloat(priceStr).toFixed(2),
+        reason: reason || 'Call out charge',
+        price: parseFloat(price).toFixed(2),
         assigned,
         payments: [],
         invoiceNumber: getNextInvoiceNumber(),
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       };
 
       const success = await addJobToDB(dayKey, newJob);
@@ -224,16 +1002,306 @@
         this.reset();
         document.getElementById('job-date').value = formatKey(new Date());
         alert('Job added successfully!');
+        currentWeekStart = getWeekStart(jobDate);
         loadBookingsAndRender();
       } else {
         alert('Failed to add job.');
       }
     });
 
-    // Initial load
-    window.onload = () => {
-      document.getElementById('job-date').value = formatKey(new Date());
-      loadBookingsAndRender();
+    // ====== SEARCH ======
+    const globalSearch = document.getElementById('global-search');
+    globalSearch.addEventListener('input', async function() {
+      const query = this.value.trim().toLowerCase();
+      if (!query) {
+        document.getElementById('search-results').style.display = 'none';
+        return;
+      }
+      const resultsList = document.getElementById('search-results-list');
+      resultsList.innerHTML = '';
+      try {
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const results = [];
+        Object.keys(bookings).forEach(dateKey => {
+          (bookings[dateKey] || []).forEach((job, index) => {
+            if (
+              job.customer.toLowerCase().includes(query) ||
+              (job.address && job.address.toLowerCase().includes(query)) ||
+              (job.phone && job.phone.toLowerCase().includes(query))
+            ) {
+              results.push({
+                job, dateKey, jobIndex: index,
+                displayDate: formatDate(parseDate(dateKey))
+              });
+            }
+          });
+        });
+        if (results.length === 0) {
+          resultsList.innerHTML = '<p>No matches found.</p>';
+        } else {
+          results.forEach(result => {
+            const li = document.createElement('div');
+            li.style.padding = '10px';
+            li.style.margin = '5px 0';
+            li.style.background = '#f8f9fa';
+            li.style.borderRadius = '5px';
+            li.style.cursor = 'pointer';
+            li.innerHTML = `<strong>${result.job.customer}</strong> (${result.displayDate})<br>
+                            <small>${result.job.address || 'No address'} | ${result.job.phone || 'No phone'}</small>`;
+            li.onclick = () => {
+              currentWeekStart = getWeekStart(parseDate(result.dateKey));
+              loadBookingsAndRender();
+              setTimeout(() => openEditModal(result.dateKey, result.jobIndex), 300);
+              document.getElementById('search-results').style.display = 'none';
+            };
+            resultsList.appendChild(li);
+          });
+        }
+        document.getElementById('search-results').style.display = 'block';
+      } catch (err) {
+        resultsList.innerHTML = '<p>Search failed. Try again.</p>';
+        document.getElementById('search-results').style.display = 'block';
+      }
+    });
+
+    function closeSearchResults() {
+      document.getElementById('search-results').style.display = 'none';
+    }
+
+    document.addEventListener('click', (e) => {
+      const results = document.getElementById('search-results');
+      const input = document.getElementById('global-search');
+      if (!results.contains(e.target) && e.target !== input) closeSearchResults();
+    });
+
+    // ====== CALL CUSTOMER ======
+    function callCustomer() {
+      if (!editingJob) return;
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) {
+            alert('Job not found.');
+            return;
+          }
+          const phone = job.phone?.trim();
+          if (!phone) {
+            alert('No phone number on file for this customer.');
+            return;
+          }
+          const telSafe = phone.replace(/[^+\d]/g, '');
+          if (!telSafe) {
+            alert('Phone number is not valid.');
+            return;
+          }
+          if (confirm(`Call ${phone}?`)) {
+            window.location.href = `tel:${telSafe}`;
+          }
+        })
+        .catch(() => alert('Failed to load customer data.'));
+    }
+
+    // ====== EDIT JOB FORM ======
+    function openEditJobForm() {
+      if (!editingJob) return;
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) return alert('Job not found.');
+
+          // Create form overlay
+          const formHTML = `
+            <div id="edit-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; justify-content:center; align-items:center; z-index:2000;">
+              <div style="background:white; padding:20px; border-radius:10px; width:90%; max-width:500px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                <h3 style="margin-top:0;">Edit Job</h3>
+                <label>Customer Name</label>
+                <input type="text" id="edit-customer" value="${job.customer}" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;" />
+                <label>Address</label>
+                <textarea id="edit-address" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;">${job.address || ''}</textarea>
+                <label>Phone Number</label>
+                <input type="tel" id="edit-phone" value="${job.phone || ''}" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;" />
+                <label>Reason for Callout</label>
+                <textarea id="edit-reason" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;">${job.reason || 'Call out charge'}</textarea>
+                <label>Total Price (£)</label>
+                <input type="number" step="0.01" id="edit-price" value="${parseFloat(job.price)}" style="width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:4px;" />
+                <div style="margin-top:15px; display:flex; gap:10px;">
+                  <button onclick="saveEditJob()" style="flex:1; padding:10px; background:#28a745; color:white; border:none; border-radius:5px; cursor:pointer;">Save Changes</button>
+                  <button onclick="document.getElementById('edit-overlay').remove()" style="flex:1; padding:10px; background:#6c757d; color:white; border:none; border-radius:5px; cursor:pointer;">Cancel</button>
+                </div>
+              </div>
+            </div>
+          `;
+          document.body.insertAdjacentHTML('beforeend', formHTML);
+        })
+        .catch(() => alert('Failed to load job for editing.'));
+    }
+
+    async function saveEditJob() {
+      const customer = document.getElementById('edit-customer').value.trim();
+      const address = document.getElementById('edit-address').value.trim();
+      const phone = document.getElementById('edit-phone').value.trim();
+      const reason = document.getElementById('edit-reason').value.trim();
+      const price = document.getElementById('edit-price').value.trim();
+
+      if (!customer || !price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+        alert('Please enter a valid customer name and price.');
+        return;
+      }
+
+      try {
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const job = bookings[editingJob.dateKey][editingJob.jobIndex];
+
+        // Update job
+        job.customer = customer;
+        job.address = address;
+        job.phone = phone;
+        job.reason = reason;
+        job.price = parseFloat(price).toFixed(2);
+
+        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
+        if (success) {
+          document.getElementById('edit-overlay').remove();
+          loadBookingsAndRender(); // Refresh UI
+          alert('Job updated successfully!');
+        } else {
+          alert('Failed to save changes.');
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+      }
+    }
+
+    // ====== PRINT RECEIPT ======
+    function printReceipt() {
+      if (!editingJob) return;
+      fetch(API_BASE)
+        .then(res => res.json())
+        .then(bookings => {
+          const job = bookings[editingJob.dateKey]?.[editingJob.jobIndex];
+          if (!job) {
+            alert('Job not found. Cannot print.');
+            return;
+          }
+          const jobDate = parseDate(editingJob.dateKey);
+          const price = parseFloat(job.price).toFixed(2);
+          const jobDateFormatted = formatDate(jobDate);
+          const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+          const due = Math.max(0, parseFloat(price) - totalPaid).toFixed(2);
+          const paidItems = (job.payments || [])
+            .map(p => `Paid £${parseFloat(p.amount).toFixed(2)} on ${formatDate(parseDate(p.date))}`)
+            .join('<br>');
+          const addressLines = job.address
+            ? job.address.split('\n').map(line => line.trim()).filter(line => line).join('<br>')
+            : 'Not provided';
+          const printContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <title>Receipt - ${job.invoiceNumber}</title>
+              <style>
+                body { font-family: Arial, sans-serif; color: #000; padding: 15mm; width: 210mm; margin: 0 auto; }
+                .logo { margin-bottom: 20px; }
+                .logo img { height: 60px; }
+                h2 { margin: 0; color: #000; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
+                td, th { padding: 8px; vertical-align: top; }
+                .bordered { border: 1px solid #000; }
+                .text-right { text-align: right; }
+                .text-center { text-align: center; }
+                .mt-20 { margin-top: 20px; }
+                .footer { position: absolute; bottom: 15mm; right: 15mm; font-size: 10pt; }
+                @page { margin: 0; size: A4; }
+              </style>
+            </head>
+            <body onload="window.print()">
+              <div class="logo">
+                <img src="https://acaciatv.netlify.app/assets/images/logo.svg" alt="Logo" />
+              </div>
+              <table>
+                <tr>
+                  <td width="30%">
+                    <strong>Acacia TV</strong><br>
+                    Filer Road, Halfway<br>
+                    Sheerness, Kent, ME12 3AL<br>
+                    United Kingdom<br>
+                    <strong>01795 873160</strong><br>
+                    acaciatv@hotmail.co.uk<br>
+                    <a href="https://acaciatv.netlify.app">https://acaciatv.netlify.app</a>
+                  </td>
+                  <td width="70%" class="text-right">
+                    <h2>Invoice <span>${job.invoiceNumber || 'N/A'}</span></h2>
+                    <table style="margin-top:10px;">
+                      <tr><td class="text-right"><strong>Invoice Date:</strong></td><td>${jobDateFormatted}</td></tr>
+                      <tr><td class="text-right"><strong>Due Date:</strong></td><td>${jobDateFormatted}</td></tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <table>
+                <tr>
+                  <td width="50%">
+                    <strong>Billed To:</strong><br>
+                    ${job.customer}<br>
+                    ${addressLines}<br>
+                    ${job.phone ? job.phone : ''}
+                  </td>
+                  <td width="50%"></td>
+                </tr>
+              </table>
+              <table class="bordered">
+                <thead style="background:#f0f0f0;">
+                  <tr>
+                    <th align="left">Description</th>
+                    <th class="text-center">Quantity</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>${job.reason || 'Call out charge'}</td>
+                    <td class="text-center">1.00</td>
+                    <td class="text-right">£${price}</td>
+                    <td class="text-right">£${price}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                    <td class="text-right"><strong>£${price}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+              ${paidItems ? `<div class="mt-20"><p><strong>Payments:</strong></p>${paidItems}</div>` : ''}
+              <p class="mt-20"><strong>Amount Due:</strong> £${due}</p>
+              <div class="footer">Page 1 / 1</div>
+            </body>
+            </html>
+          `;
+          const printWindow = window.open('', '_blank');
+          printWindow.document.write(printContent);
+          printWindow.document.close();
+          printWindow.focus();
+        })
+        .catch(() => alert('Failed to load job data for printing.'));
+    }
+
+    // ====== INIT ON LOAD ======
+    window.onload = function() {
+      const savedHash = localStorage.getItem('calendarPassword');
+      const passwordConfirm = document.getElementById('password-confirm');
+      const setupPrompt = document.getElementById('setup-prompt');
+      passwordConfirm.style.display = savedHash ? 'none' : 'block';
+      setupPrompt.textContent = savedHash
+        ? 'Enter your password to unlock the calendar.'
+        : 'Set a new password to secure your calendar.';
+      document.getElementById('password-screen').style.display = 'flex';
     };
   </script>
 </body>
