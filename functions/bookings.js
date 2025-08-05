@@ -34,29 +34,28 @@ export async function handler(event, context) {
     const method = event.httpMethod;
     const body = event.body ? JSON.parse(event.body) : {};
 
+    // ====== GET: Load all jobs ======
     if (method === 'GET') {
-      const res = await client.query('SELECT date_key, job FROM job_bookings ORDER BY date_key');
-      const bookings = {};
-
-      for (let row of res.rows) {
-        if (!bookings[row.date_key]) bookings[row.date_key] = [];
-        bookings[row.date_key].push(row.job);
-      }
-
+      const res = await client.query('SELECT id, date_key, job FROM job_bookings ORDER BY date_key');
+      const results = res.rows.map(row => ({
+        id: row.id,
+        date_key: row.date_key,
+        job: row.job
+      }));
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bookings),
+        body: JSON.stringify(results),
       };
     }
 
+    // ====== POST: Add new job ======
     if (method === 'POST' && body.type === 'add') {
       const { date_key, job } = body;
       await client.query(
         'INSERT INTO job_bookings (date_key, job) VALUES ($1, $2)',
         [date_key, job]
       );
-
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -64,17 +63,23 @@ export async function handler(event, context) {
       };
     }
 
+    // ====== POST: Update job by date_key and index (used by frontend) ======
     if (method === 'POST' && body.type === 'update') {
       const { date_key, jobIndex, job } = body;
-      const res = await client.query(
-        'SELECT job FROM job_bookings WHERE date_key = $1',
-        [date_key]
-      );
-
+      const res = await client.query('SELECT id, job FROM job_bookings WHERE date_key = $1', [date_key]);
       const jobs = res.rows.map(r => r.job);
+      if (jobIndex < 0 || jobIndex >= jobs.length) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: 'Invalid job index' })
+        };
+      }
       jobs[jobIndex] = job;
 
+      // Delete all jobs for this date
       await client.query('DELETE FROM job_bookings WHERE date_key = $1', [date_key]);
+
+      // Re-insert all jobs
       for (let j of jobs) {
         await client.query('INSERT INTO job_bookings (date_key, job) VALUES ($1, $2)', [date_key, j]);
       }
@@ -86,14 +91,45 @@ export async function handler(event, context) {
       };
     }
 
+    // ====== POST: Delete job by ID (NEW - prevents duplication) ======
+    if (method === 'POST' && body.type === 'deleteById') {
+      const { id } = body;
+      if (!id) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: 'Job ID is required' })
+        };
+      }
+
+      const result = await client.query('DELETE FROM job_bookings WHERE id = $1', [id]);
+      if (result.rowCount === 0) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ error: 'Job not found' })
+        };
+      }
+
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ success: true }),
+      };
+    }
+
+    // ====== POST: Legacy delete by date_key + index (keep for compatibility) ======
     if (method === 'POST' && body.type === 'delete') {
       const { date_key, jobIndex } = body;
       const res = await client.query('SELECT job FROM job_bookings WHERE date_key = $1', [date_key]);
       const jobs = res.rows.map(r => r.job);
 
-      if (jobIndex >= 0 && jobIndex < jobs.length) {
-        jobs.splice(jobIndex, 1);
+      if (jobIndex < 0 || jobIndex >= jobs.length) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: 'Invalid job index' })
+        };
       }
+
+      jobs.splice(jobIndex, 1);
 
       await client.query('DELETE FROM job_bookings WHERE date_key = $1', [date_key]);
 
