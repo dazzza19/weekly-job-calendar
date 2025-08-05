@@ -704,11 +704,11 @@
       return res.ok;
     }
 
-    async function updateJobInDB(dateKey, jobIndex, job) {
+    async function updateJobInDB(jobId, job) {
       const res = await fetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'update', date_key: dateKey, jobIndex, job })
+        body: JSON.stringify({ type: 'updateById', id: jobId, job })
       });
       return res.ok;
     }
@@ -918,7 +918,7 @@
 
         if (!job.payments) job.payments = [];
         job.payments.push({ amount: amount.toFixed(2), date });
-        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
+        const success = await updateJobInDB(editingJob.id, job);
 
         if (success) {
           jobsForDay[editingJob.jobIndex].job = job;
@@ -940,7 +940,7 @@
         if (!job || !job.payments || job.payments.length <= paymentIndex) return;
 
         job.payments.splice(paymentIndex, 1);
-        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
+        const success = await updateJobInDB(editingJob.id, job);
 
         if (success) {
           jobsForDay[editingJob.jobIndex].job = job;
@@ -981,7 +981,7 @@
           date: dateInput
         });
 
-        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
+        const success = await updateJobInDB(editingJob.id, job);
         if (success) {
           jobsForDay[editingJob.jobIndex].job = job;
           openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
@@ -1016,7 +1016,47 @@
 
     function editJob() {
       if (!editingJob) return;
-      alert('Edit job details: Please delete and re-add if changes are needed.');
+
+      const jobsForDay = allBookings[editingJob.dateKey] || [];
+      const job = jobsForDay[editingJob.jobIndex]?.job;
+      if (!job) return;
+
+      const customer = prompt('Edit customer name:', job.customer);
+      if (customer === null) return;
+
+      const priceInput = prompt('Edit job price (£):', job.price);
+      if (priceInput === null) return;
+      let price = '0.00';
+      if (priceInput.toLowerCase() === 'foc') {
+        price = '0.00';
+      } else {
+        const num = parseFloat(priceInput);
+        if (isNaN(num) || num < 0) {
+          alert('Invalid price entered.');
+          return;
+        }
+        price = num.toFixed(2);
+      }
+
+      const assigned = prompt('Edit assigned technician:', job.assigned);
+      if (assigned === null || !['Stephen', 'Darren'].includes(assigned)) {
+        alert('Invalid technician.');
+        return;
+      }
+
+      job.customer = customer;
+      job.price = price;
+      job.assigned = assigned;
+
+      updateJobInDB(editingJob.id, job).then(success => {
+        if (success) {
+          jobsForDay[editingJob.jobIndex].job = job;
+          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
+          alert('Job updated successfully!');
+        } else {
+          alert('Failed to update job.');
+        }
+      });
     }
 
     document.getElementById('booking-form').addEventListener('submit', async function(e) {
