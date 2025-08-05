@@ -658,7 +658,7 @@
         const bookings = await res.json();
         renderWeek(bookings);
       } catch (err) {
-        console.error('Failed to load ', err);
+        console.error('Failed to load data:', err);
         alert('Could not connect to database.');
       }
     }
@@ -929,8 +929,10 @@
 
         const updatedJobs = jobsForDay.filter((_, index) => index !== editingJob.jobIndex);
 
+        // Delete all jobs for the day
         await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
 
+        // Only re-insert remaining jobs
         if (updatedJobs.length > 0) {
           for (let job of updatedJobs) {
             await addJobToDB(editingJob.dateKey, job);
