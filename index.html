@@ -243,12 +243,15 @@
     .modal {
       display: none;
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: rgba(0,0,0,0.6);
       justify-content: center;
       align-items: center;
       z-index: 1000;
+      overflow: auto;
     }
     .modal-content {
       background: white;
@@ -258,6 +261,10 @@
       max-width: 500px;
       box-shadow: 0 10px 20px rgba(0,0,0,0.2);
       color: #000;
+      margin: 40px auto;
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     .modal-header {
       display: flex;
@@ -282,11 +289,22 @@
       font-size: 0.9em;
     }
     .payment-item {
-      padding: 5px;
+      padding: 8px 10px;
       background: #f8f9fa;
-      margin-bottom: 4px;
-      border-radius: 3px;
+      margin-bottom: 6px;
+      border-radius: 6px;
       font-size: 0.85em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .delete-payment {
+      color: #dc3545;
+      background: none;
+      border: none;
+      font-size: 1em;
+      cursor: pointer;
+      padding: 0 5px;
     }
     /* Modal Footer */
     .modal-footer {
@@ -326,13 +344,13 @@
       background: #6c757d;
       color: white;
     }
+    .btn-edit {
+      background: #007bff;
+      color: white;
+    }
     .btn-paid-full {
       background: #ffc107;
       color: #000;
-    }
-    .btn-close {
-      background: #007bff;
-      color: white;
     }
     .form-group {
       margin: 10px 0;
@@ -583,17 +601,17 @@
             <span>🗑️</span>
             <span>Delete</span>
           </button>
-          <button class="btn-close" onclick="closeModal()">
+          <button class="btn-cancel" onclick="closeModal()">
             <span>❌</span>
             <span>Close</span>
+          </button>
+          <button class="btn-edit" onclick="editJob()">
+            <span>✏️</span>
+            <span>Edit</span>
           </button>
           <button class="btn-paid-full" onclick="markPaidInFull()">
             <span>✅</span>
             <span>Paid</span>
-          </button>
-          <button class="btn-add-payment" onclick="addPayment()">
-            <span>➕</span>
-            <span>Pay</span>
           </button>
         </div>
       </div>
@@ -786,12 +804,7 @@
               return `
                 <div class="job-item ${jobClass}" onclick="event.stopPropagation(); openEditModal('${dayKey}', ${index}, '${record.id}');">
                   <div class="job-customer">${job.customer}</div>
-                  <div class="job-price">
-                    ${totalDue == 0 
-                      ? '<span style="color:#007bff; font-weight:bold;">Free Service</span>' 
-                      : '£' + totalPaid.toFixed(2) + ' / £' + totalDue.toFixed(2)
-                    }
-                  </div>
+                  <div class="job-price">£${totalPaid.toFixed(2)} / £${totalDue.toFixed(2)}</div>
                   <span class="job-status ${statusClass}">${statusText}</span>
                   <div class="job-assigned">→ ${job.assigned}</div>
                 </div>
@@ -871,7 +884,12 @@
 
       const paymentList = document.getElementById('payment-list');
       paymentList.innerHTML = job.payments.length > 0
-        ? job.payments.map(p => `<div class="payment-item">£${parseFloat(p.amount).toFixed(2)} on ${p.date}</div>`).join('')
+        ? job.payments.map((p, i) => `
+            <div class="payment-item">
+              <span>£${parseFloat(p.amount).toFixed(2)} on ${p.date}</span>
+              <button class="delete-payment" onclick="deletePayment(${i})" title="Delete this payment">✕</button>
+            </div>
+          `).join('')
         : '<div class="payment-item">No payments recorded</div>';
 
       const today = new Date();
@@ -885,7 +903,6 @@
     }
 
     async function addPayment() {
-      const btn = document.querySelector('.btn-add-payment');
       const amountInput = document.getElementById('new-payment');
       const dateInput = document.getElementById('payment-date');
       const amount = parseFloat(amountInput.value);
@@ -894,40 +911,46 @@
       if (isNaN(amount) || amount <= 0) return alert('Please enter a valid payment amount.');
       if (!date) return alert('Please select a payment date.');
 
-      btn.disabled = true;
-      btn.style.opacity = '0.6';
-      btn.textContent = 'Processing...';
-
       try {
         const jobsForDay = allBookings[editingJob.dateKey] || [];
         const job = jobsForDay[editingJob.jobIndex]?.job;
         if (!job) throw new Error('Job not found');
 
         if (!job.payments) job.payments = [];
-
-        const duplicate = job.payments.some(p => p.amount == amount.toFixed(2) && p.date === date);
-        if (duplicate) {
-          alert('This payment is already recorded.');
-          return;
-        }
-
         job.payments.push({ amount: amount.toFixed(2), date });
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
 
         if (success) {
           jobsForDay[editingJob.jobIndex].job = job;
-          renderWeek();
-          amountInput.value = '';
-          dateInput.value = formatKey(new Date());
+          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
         } else {
           alert('Failed to save payment.');
         }
       } catch (err) {
         alert('Network error. Please try again.');
-      } finally {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.textContent = 'Add Payment';
+      }
+    }
+
+    async function deletePayment(paymentIndex) {
+      if (!editingJob || !confirm('Delete this payment?')) return;
+
+      try {
+        const jobsForDay = allBookings[editingJob.dateKey] || [];
+        const job = jobsForDay[editingJob.jobIndex]?.job;
+        if (!job || !job.payments || job.payments.length <= paymentIndex) return;
+
+        job.payments.splice(paymentIndex, 1);
+        const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
+
+        if (success) {
+          jobsForDay[editingJob.jobIndex].job = job;
+          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
+        } else {
+          alert('Failed to delete payment.');
+        }
+      } catch (err) {
+        console.error('Delete payment failed:', err);
+        alert('Failed to delete payment. Please try again.');
       }
     }
 
@@ -939,11 +962,6 @@
         if (!job) throw new Error('Job not found');
 
         const totalDue = parseFloat(job.price);
-        if (totalDue == 0) {
-          alert('This job is free of charge.');
-          return;
-        }
-
         const totalPaid = (job.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
         if (totalPaid >= totalDue) {
           alert('This job is already fully paid.');
@@ -966,7 +984,7 @@
         const success = await updateJobInDB(editingJob.dateKey, editingJob.jobIndex, job);
         if (success) {
           jobsForDay[editingJob.jobIndex].job = job;
-          renderWeek();
+          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
           alert('Marked as Paid in Full!');
         } else {
           alert('Failed to update job.');
@@ -994,6 +1012,11 @@
         console.error('Delete failed:', err);
         alert('Failed to delete job. Please try again.');
       }
+    }
+
+    function editJob() {
+      if (!editingJob) return;
+      alert('Edit job details: Please delete and re-add if changes are needed.');
     }
 
     document.getElementById('booking-form').addEventListener('submit', async function(e) {
