@@ -287,8 +287,18 @@
       margin-bottom: 4px;
       border-radius: 3px;
       font-size: 0.85em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    /* Modal Footer Grid */
+    .delete-payment {
+      color: #dc3545;
+      background: none;
+      border: none;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    /* Modal Footer */
     .modal-footer {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -326,13 +336,13 @@
       background: #6c757d;
       color: white;
     }
+    .btn-edit {
+      background: #007bff;
+      color: white;
+    }
     .btn-paid-full {
       background: #ffc107;
       color: #000;
-    }
-    .btn-close {
-      background: #007bff;
-      color: white;
     }
     .form-group {
       margin: 10px 0;
@@ -583,17 +593,17 @@
             <span>🗑️</span>
             <span>Delete</span>
           </button>
-          <button class="btn-close" onclick="closeModal()">
+          <button class="btn-cancel" onclick="closeModal()">
             <span>❌</span>
             <span>Close</span>
+          </button>
+          <button class="btn-edit" onclick="editJob()">
+            <span>✏️</span>
+            <span>Edit</span>
           </button>
           <button class="btn-paid-full" onclick="markPaidInFull()">
             <span>✅</span>
             <span>Paid</span>
-          </button>
-          <button class="btn-add-payment" onclick="addPayment()">
-            <span>➕</span>
-            <span>Pay</span>
           </button>
         </div>
       </div>
@@ -622,7 +632,7 @@
     currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay() + (currentWeekStart.getDay() === 0 ? -6 : 1));
     currentWeekStart.setHours(0, 0, 0, 0);
     let editingJob = null;
-    let allBookings = {}; // Store full data with IDs
+    let allBookings = {};
 
     // ====== PASSWORD SYSTEM ======
     window.checkPassword = function() {
@@ -672,7 +682,7 @@
 
         renderWeek();
       } catch (err) {
-        console.error('Failed to load data:', err);
+        console.error('Failed to load ', err);
         alert('Could not connect to database.');
       }
     }
@@ -866,7 +876,12 @@
 
       const paymentList = document.getElementById('payment-list');
       paymentList.innerHTML = job.payments.length > 0
-        ? job.payments.map(p => `<div class="payment-item">£${parseFloat(p.amount).toFixed(2)} on ${p.date}</div>`).join('')
+        ? job.payments.map((p, i) => `
+            <div class="payment-item">
+              <span>£${parseFloat(p.amount).toFixed(2)} on ${p.date}</span>
+              <button class="delete-payment" onclick="deletePayment(${i})" title="Delete this payment">✕</button>
+            </div>
+          `).join('')
         : '<div class="payment-item">No payments recorded</div>';
 
       const today = new Date();
@@ -905,6 +920,29 @@
         }
       } catch (err) {
         alert('Network error. Please try again.');
+      }
+    }
+
+    async function deletePayment(paymentIndex) {
+      if (!editingJob || !confirm('Delete this payment?')) return;
+
+      try {
+        const jobsForDay = allBookings[editingJob.dateKey] || [];
+        const job = jobsForDay[editingJob.jobIndex]?.job;
+        if (!job || !job.payments || job.payments.length <= paymentIndex) return;
+
+        job.payments.splice(paymentIndex, 1);
+        const success = await updateJobInDB(editingJob.id, job);
+
+        if (success) {
+          jobsForDay[editingJob.jobIndex].job = job;
+          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
+        } else {
+          alert('Failed to delete payment.');
+        }
+      } catch (err) {
+        console.error('Delete payment failed:', err);
+        alert('Failed to delete payment. Please try again.');
       }
     }
 
@@ -966,6 +1004,51 @@
         console.error('Delete failed:', err);
         alert('Failed to delete job. Please try again.');
       }
+    }
+
+    function editJob() {
+      if (!editingJob) return;
+
+      const jobsForDay = allBookings[editingJob.dateKey] || [];
+      const job = jobsForDay[editingJob.jobIndex]?.job;
+      if (!job) return;
+
+      const customer = prompt('Edit customer name:', job.customer);
+      if (customer === null) return;
+
+      const priceInput = prompt('Edit job price (£):', job.price);
+      if (priceInput === null) return;
+      let price = '0.00';
+      if (priceInput.toLowerCase() === 'foc') {
+        price = '0.00';
+      } else {
+        const num = parseFloat(priceInput);
+        if (isNaN(num) || num < 0) {
+          alert('Invalid price entered.');
+          return;
+        }
+        price = num.toFixed(2);
+      }
+
+      const assigned = prompt('Edit assigned technician:', job.assigned);
+      if (assigned === null || !['Stephen', 'Darren'].includes(assigned)) {
+        alert('Invalid technician.');
+        return;
+      }
+
+      job.customer = customer;
+      job.price = price;
+      job.assigned = assigned;
+
+      updateJobInDB(editingJob.id, job).then(success => {
+        if (success) {
+          jobsForDay[editingJob.jobIndex].job = job;
+          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
+          alert('Job updated successfully!');
+        } else {
+          alert('Failed to update job.');
+        }
+      });
     }
 
     document.getElementById('booking-form').addEventListener('submit', async function(e) {
