@@ -257,6 +257,7 @@
       width: 90%;
       max-width: 500px;
       box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+      color: #000;
     }
     .modal-header {
       display: flex;
@@ -287,7 +288,7 @@
       border-radius: 3px;
       font-size: 0.85em;
     }
-    /* Modal Footer Grid */
+    /* Modal Footer */
     .modal-footer {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -457,15 +458,6 @@
         font-size: 0.9em;
       }
     }
-
-    /* No Charge Field */
-    #price-field {
-      margin-top: 10px;
-      transition: opacity 0.3s ease;
-    }
-    #no-charge-checkbox:checked ~ #price-field {
-      display: none;
-    }
   </style>
 </head>
 <body>
@@ -515,17 +507,8 @@
           <input type="tel" id="phone" placeholder="e.g. 07123 456789" />
           <label for="reason">Reason for Callout</label>
           <textarea id="reason" placeholder="e.g. Call out charge"></textarea>
-
-          <!-- No Charge Checkbox -->
-          <label>
-            <input type="checkbox" id="no-charge-checkbox"> 
-            <strong>No Charge (Free of Charge)</strong>
-          </label>
-          <div id="price-field">
-            <label for="price">Total Job Price (£)</label>
-            <input type="number" step="0.01" id="price" placeholder="0.00" required />
-          </div>
-
+          <label for="price">Total Job Price (£)</label>
+          <input type="text" id="price" placeholder="0.00 or 'foc'" required />
           <label for="assigned">Assigned To</label>
           <select id="assigned" required>
             <option value="">-- Select Technician --</option>
@@ -554,7 +537,7 @@
         </div>
         <div class="modal-body">
           <p><strong>Date:</strong> <span id="modal-date"></span></p>
-          <p><strong>Total Due:</strong> £<span id="modal-total">0.00</span></p>
+          <p><strong>Total Due:</strong> <span id="modal-total">0.00</span></p>
           <p><strong>Total Paid:</strong> £<span id="modal-paid">0.00</span></p>
           <p><strong>Outstanding:</strong> £<span id="modal-outstanding">0.00</span></p>
           <p><strong>Assigned To:</strong> <span id="modal-assigned"></span></p>
@@ -572,8 +555,17 @@
             <label for="payment-date">Payment Date</label>
             <input type="date" id="payment-date" />
           </div>
-          <button class="btn-add-payment" onclick="addPayment()">Add Payment</button>
-          <button class="btn-paid-full" onclick="markPaidInFull()">Set as Paid in Full</button>
+          <div style="margin-top: 15px; text-align: center;">
+            <button class="btn-add-payment" style="padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1em;">
+              ➕ Add Payment
+            </button>
+          </div>
+          <hr>
+          <div style="text-align: center; margin-top: 10px;">
+            <button class="btn-paid-full" style="padding: 12px 20px; background: #ffc107; color: #000; border: none; border-radius: 6px; cursor: pointer; font-size: 1.1em; font-weight: bold;">
+              ✅ Mark as Paid in Full
+            </button>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="btn-call" onclick="callCustomer()">
@@ -761,7 +753,7 @@
                   <div class="job-customer">${job.customer}</div>
                   <div class="job-price">
                     ${totalDue == 0 
-                      ? 'No Charge' 
+                      ? '<span style="color:#007bff; font-weight:bold;">Free Service</span>' 
                       : '£' + totalPaid.toFixed(2) + ' / £' + totalDue.toFixed(2)
                     }
                   </div>
@@ -822,7 +814,7 @@
         document.getElementById('modal-date').textContent = formatDate(jobDate);
         const totalDue = parseFloat(job.price);
         if (totalDue == 0) {
-          document.getElementById('modal-total').innerHTML = '<em>No Charge</em>';
+          document.getElementById('modal-total').innerHTML = '<em style="color:#007bff;">Free Service</em>';
         } else {
           document.getElementById('modal-total').textContent = totalDue.toFixed(2);
         }
@@ -911,12 +903,35 @@
     }
     async function deleteJob() {
       if (!editingJob || !confirm('Delete this job and all payments?')) return;
-      const success = await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
-      if (success) {
+
+      try {
+        const res = await fetch(API_BASE);
+        const bookings = await res.json();
+        const jobsForDay = bookings[editingJob.dateKey] || [];
+
+        if (editingJob.jobIndex < 0 || editingJob.jobIndex >= jobsForDay.length) {
+          alert('Job no longer exists.');
+          closeModal();
+          loadBookingsAndRender();
+          return;
+        }
+
+        const updatedJobs = jobsForDay.filter((_, index) => index !== editingJob.jobIndex);
+
+        await deleteJobFromDB(editingJob.dateKey, editingJob.jobIndex);
+
+        if (updatedJobs.length > 0) {
+          for (let job of updatedJobs) {
+            await addJobToDB(editingJob.dateKey, job);
+          }
+        }
+
         closeModal();
         loadBookingsAndRender();
-      } else {
-        alert('Failed to delete job.');
+        alert('Job deleted successfully!');
+      } catch (err) {
+        console.error('Delete failed:', err);
+        alert('Failed to delete job. Please try again.');
       }
     }
     document.getElementById('booking-form').addEventListener('submit', async function(e) {
@@ -926,20 +941,8 @@
       const address = document.getElementById('address').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const reason = document.getElementById('reason').value.trim();
+      const priceInput = document.getElementById('price').value.trim().toLowerCase();
       const assigned = document.getElementById('assigned').value;
-
-      // Handle No Charge logic
-      const noCharge = document.getElementById('no-charge-checkbox').checked;
-      let price = '0.00';
-
-      if (!noCharge) {
-        const priceInput = document.getElementById('price').value.trim();
-        if (!priceInput || isNaN(parseFloat(priceInput)) || parseFloat(priceInput) <= 0) {
-          alert('Please enter a valid job price, or check "No Charge".');
-          return;
-        }
-        price = parseFloat(priceInput).toFixed(2);
-      }
 
       if (!customer || !assigned || !jobDateStr) {
         alert('Please fill in all required fields.');
@@ -951,6 +954,16 @@
         alert('Invalid date format.');
         return;
       }
+
+      let price = '0.00';
+      if (priceInput && priceInput !== 'foc') {
+        if (isNaN(parseFloat(priceInput)) || parseFloat(priceInput) <= 0) {
+          alert('Please enter a valid job price, or type "foc" for free of charge.');
+          return;
+        }
+        price = parseFloat(priceInput).toFixed(2);
+      }
+      // If "foc", price remains "0.00"
 
       const dayKey = formatKey(jobDate);
       const newJob = {
@@ -969,8 +982,6 @@
       if (success) {
         this.reset();
         document.getElementById('job-date').value = formatKey(new Date());
-        document.getElementById('no-charge-checkbox').checked = false;
-        document.getElementById('price-field').style.display = 'block';
         alert('Job added successfully!');
         currentWeekStart = getWeekStart(jobDate);
         loadBookingsAndRender();
@@ -978,7 +989,6 @@
         alert('Failed to add job.');
       }
     });
-
     // ====== SEARCH ======
     const globalSearch = document.getElementById('global-search');
     globalSearch.addEventListener('input', async function() {
@@ -1042,7 +1052,6 @@
       const input = document.getElementById('global-search');
       if (!results.contains(e.target) && e.target !== input) closeSearchResults();
     });
-
     // ====== PRINT RECEIPT ======
     function printReceipt() {
       if (!editingJob) return;
@@ -1160,7 +1169,6 @@
           alert('Failed to load job data for printing.');
         });
     }
-
     // ====== CALL CUSTOMER ======
     function callCustomer() {
       if (!editingJob) return;
@@ -1191,7 +1199,6 @@
           alert('Failed to load customer data.');
         });
     }
-
     // ====== INIT ON LOAD ======
     window.onload = function() {
       const savedHash = localStorage.getItem('calendarPassword');
