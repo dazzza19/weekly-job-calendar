@@ -532,7 +532,7 @@
           <label for="reason">Reason for Callout</label>
           <textarea id="reason" placeholder="e.g. Call out charge"></textarea>
           <label for="price">Total Job Price (£)</label>
-          <input type="text" id="price" placeholder="0.00 or 'foc'" required />
+          <input type="number" step="0.01" id="price" placeholder="0.00" required />
           <label for="assigned">Assigned To</label>
           <select id="assigned" required>
             <option value="">-- Select Technician --</option>
@@ -561,7 +561,7 @@
         </div>
         <div class="modal-body">
           <p><strong>Date:</strong> <span id="modal-date"></span></p>
-          <p><strong>Total Due:</strong> <span id="modal-total">0.00</span></p>
+          <p><strong>Total Due:</strong> £<span id="modal-total">0.00</span></p>
           <p><strong>Total Paid:</strong> £<span id="modal-paid">0.00</span></p>
           <p><strong>Outstanding:</strong> £<span id="modal-outstanding">0.00</span></p>
           <p><strong>Assigned To:</strong> <span id="modal-assigned"></span></p>
@@ -864,18 +864,11 @@
       const jobDate = parseDate(dateKey);
       document.getElementById('modal-customer').textContent = job.customer;
       document.getElementById('modal-date').textContent = formatDate(jobDate);
-
-      const totalDue = parseFloat(job.price);
-      if (totalDue == 0) {
-        document.getElementById('modal-total').innerHTML = '<em style="color:#007bff;">Free Service</em>';
-      } else {
-        document.getElementById('modal-total').textContent = totalDue.toFixed(2);
-      }
-
+      document.getElementById('modal-total').textContent = parseFloat(job.price).toFixed(2);
       document.getElementById('modal-assigned').textContent = job.assigned;
       if (!job.payments) job.payments = [];
       const totalPaid = job.payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-      const outstanding = Math.max(0, totalDue - totalPaid);
+      const outstanding = Math.max(0, parseFloat(job.price) - totalPaid);
       document.getElementById('modal-paid').textContent = totalPaid.toFixed(2);
       document.getElementById('modal-outstanding').textContent = outstanding.toFixed(2);
       document.getElementById('modal-invoice').textContent = job.invoiceNumber || 'N/A';
@@ -919,8 +912,9 @@
         const success = await updateJobInDB(editingJob.id, job);
 
         if (success) {
-          jobsForDay[editingJob.jobIndex].job = job;
-          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
+          closeModal();
+          loadBookingsAndRender();
+          alert('Payment added successfully!');
         } else {
           alert('Failed to save payment.');
         }
@@ -941,8 +935,9 @@
         const success = await updateJobInDB(editingJob.id, job);
 
         if (success) {
-          jobsForDay[editingJob.jobIndex].job = job;
-          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
+          closeModal();
+          loadBookingsAndRender();
+          alert('Payment deleted successfully!');
         } else {
           alert('Failed to delete payment.');
         }
@@ -981,8 +976,8 @@
 
         const success = await updateJobInDB(editingJob.id, job);
         if (success) {
-          jobsForDay[editingJob.jobIndex].job = job;
-          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
+          closeModal();
+          loadBookingsAndRender();
           alert('Marked as Paid in Full!');
         } else {
           alert('Failed to update job.');
@@ -1001,7 +996,7 @@
           const jobsForDay = allBookings[editingJob.dateKey] || [];
           allBookings[editingJob.dateKey] = jobsForDay.filter((_, index) => index !== editingJob.jobIndex);
           closeModal();
-          renderWeek();
+          loadBookingsAndRender();
           alert('Job deleted successfully!');
         } else {
           alert('Failed to delete job.');
@@ -1024,17 +1019,11 @@
 
       const priceInput = prompt('Edit job price (£):', job.price);
       if (priceInput === null) return;
-      let price = '0.00';
-      if (priceInput.toLowerCase() === 'foc') {
-        price = '0.00';
-      } else {
-        const num = parseFloat(priceInput);
-        if (isNaN(num) || num < 0) {
-          alert('Invalid price entered.');
-          return;
-        }
-        price = num.toFixed(2);
+      if (isNaN(parseFloat(priceInput)) || parseFloat(priceInput) <= 0) {
+        alert('Invalid price entered.');
+        return;
       }
+      const price = parseFloat(priceInput).toFixed(2);
 
       const assigned = prompt('Edit assigned technician:', job.assigned);
       if (assigned === null || !['Stephen', 'Darren'].includes(assigned)) {
@@ -1048,8 +1037,8 @@
 
       updateJobInDB(editingJob.id, job).then(success => {
         if (success) {
-          jobsForDay[editingJob.jobIndex].job = job;
-          openEditModal(editingJob.dateKey, editingJob.jobIndex, editingJob.id);
+          closeModal();
+          loadBookingsAndRender();
           alert('Job updated successfully!');
         } else {
           alert('Failed to update job.');
@@ -1064,11 +1053,11 @@
       const address = document.getElementById('address').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const reason = document.getElementById('reason').value.trim();
-      const priceInput = document.getElementById('price').value.trim().toLowerCase();
+      const price = document.getElementById('price').value.trim();
       const assigned = document.getElementById('assigned').value;
 
-      if (!customer || !assigned || !jobDateStr) {
-        alert('Please fill in all required fields.');
+      if (!customer || !assigned || !jobDateStr || !price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+        alert('Please fill in all required fields with valid data.');
         return;
       }
 
@@ -1078,22 +1067,13 @@
         return;
       }
 
-      let price = '0.00';
-      if (priceInput && priceInput !== 'foc') {
-        if (isNaN(parseFloat(priceInput)) || parseFloat(priceInput) <= 0) {
-          alert('Please enter a valid job price, or type "foc" for free of charge.');
-          return;
-        }
-        price = parseFloat(priceInput).toFixed(2);
-      }
-
       const dayKey = formatKey(jobDate);
       const newJob = {
         customer,
         address,
         phone,
         reason: reason || 'Call out charge',
-        price: price,
+        price: parseFloat(price).toFixed(2),
         assigned,
         payments: [],
         invoiceNumber: getNextInvoiceNumber(),
