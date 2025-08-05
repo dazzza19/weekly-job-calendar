@@ -288,7 +288,7 @@
       border-radius: 3px;
       font-size: 0.85em;
     }
-    /* Modal Footer */
+    /* Modal Footer (6 buttons) */
     .modal-footer {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -324,6 +324,14 @@
     }
     .btn-cancel {
       background: #6c757d;
+      color: white;
+    }
+    .btn-paid-full {
+      background: #ffc107;
+      color: #000;
+    }
+    .btn-close {
+      background: #007bff;
       color: white;
     }
     .form-group {
@@ -555,17 +563,12 @@
             <label for="payment-date">Payment Date</label>
             <input type="date" id="payment-date" />
           </div>
-          <div style="margin-top: 15px; text-align: center;">
-            <button class="btn-add-payment" style="padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1em;">
-              ➕ Add Payment
-            </button>
-          </div>
-          <hr>
-          <div style="text-align: center; margin-top: 10px;">
-            <button class="btn-paid-full" style="padding: 12px 20px; background: #ffc107; color: #000; border: none; border-radius: 6px; cursor: pointer; font-size: 1.1em; font-weight: bold;">
-              ✅ Mark as Paid in Full
-            </button>
-          </div>
+          <button class="btn-add-payment" onclick="addPayment()" style="padding: 10px; background: #28a745; color: white; border: none; border-radius: 6px; width: 100%; margin: 10px 0;">
+            ➕ Add Payment
+          </button>
+          <button class="btn-paid-full" onclick="markPaidInFull()" style="padding: 10px; background: #ffc107; color: #000; border: none; border-radius: 6px; width: 100%; font-weight: bold;">
+            ✅ Mark as Paid in Full
+          </button>
         </div>
         <div class="modal-footer">
           <button class="btn-call" onclick="callCustomer()">
@@ -580,9 +583,17 @@
             <span>🗑️</span>
             <span>Delete</span>
           </button>
-          <button class="btn-cancel" onclick="closeModal()">
+          <button class="btn-close" onclick="closeModal()">
             <span>❌</span>
             <span>Close</span>
+          </button>
+          <button class="btn-paid-full" onclick="markPaidInFull()">
+            <span>✅</span>
+            <span>Paid</span>
+          </button>
+          <button class="btn-add-payment" onclick="addPayment()">
+            <span>➕</span>
+            <span>Pay</span>
           </button>
         </div>
       </div>
@@ -647,7 +658,7 @@
         const bookings = await res.json();
         renderWeek(bookings);
       } catch (err) {
-        console.error('Failed to load data:', err);
+        console.error('Failed to load ', err);
         alert('Could not connect to database.');
       }
     }
@@ -963,7 +974,6 @@
         }
         price = parseFloat(priceInput).toFixed(2);
       }
-      // If "foc", price remains "0.00"
 
       const dayKey = formatKey(jobDate);
       const newJob = {
