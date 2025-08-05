@@ -1,4 +1,3 @@
-// functions/bookings.js
 import { Client } from 'pg';
 
 const client = new Client({
@@ -18,6 +17,8 @@ async function getClient() {
 async function initDB() {
   const client = await getClient();
   await client.query(`
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
     CREATE TABLE IF NOT EXISTS job_bookings (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       date_key TEXT NOT NULL,
@@ -52,6 +53,12 @@ export async function handler(event, context) {
 
     if (method === 'POST' && body.type === 'add') {
       const { date_key, job } = body;
+
+      // Assign unique ID if not already present
+      if (!job.id) {
+        job.id = crypto.randomUUID(); // If this fails in your environment, use a UUID library
+      }
+
       await client.query(
         'INSERT INTO job_bookings (date_key, job) VALUES ($1, $2)',
         [date_key, job]
@@ -65,17 +72,14 @@ export async function handler(event, context) {
     }
 
     if (method === 'POST' && body.type === 'update') {
-      const { date_key, jobIndex, job } = body;
-      const res = await client.query(
-        'SELECT job FROM job_bookings WHERE date_key = $1',
-        [date_key]
-      );
+      const { date_key, job } = body;
 
-      const jobs = res.rows.map(r => r.job);
-      jobs[jobIndex] = job;
+      const res = await client.query('SELECT * FROM job_bookings WHERE date_key = $1', [date_key]);
+      const updatedJobs = res.rows.map(r => r.job).map(j => j.id === job.id ? job : j);
 
       await client.query('DELETE FROM job_bookings WHERE date_key = $1', [date_key]);
-      for (let j of jobs) {
+
+      for (let j of updatedJobs) {
         await client.query('INSERT INTO job_bookings (date_key, job) VALUES ($1, $2)', [date_key, j]);
       }
 
@@ -87,20 +91,15 @@ export async function handler(event, context) {
     }
 
     if (method === 'POST' && body.type === 'delete') {
-      const { date_key, jobIndex } = body;
-      const res = await client.query('SELECT job FROM job_bookings WHERE date_key = $1', [date_key]);
-      const jobs = res.rows.map(r => r.job);
+      const { date_key, jobId } = body;
 
-      if (jobIndex >= 0 && jobIndex < jobs.length) {
-        jobs.splice(jobIndex, 1);
-      }
+      const res = await client.query('SELECT job FROM job_bookings WHERE date_key = $1', [date_key]);
+      const jobs = res.rows.map(r => r.job).filter(j => j.id !== jobId);
 
       await client.query('DELETE FROM job_bookings WHERE date_key = $1', [date_key]);
 
-      if (jobs.length > 0) {
-        for (let job of jobs) {
-          await client.query('INSERT INTO job_bookings (date_key, job) VALUES ($1, $2)', [date_key, job]);
-        }
+      for (let job of jobs) {
+        await client.query('INSERT INTO job_bookings (date_key, job) VALUES ($1, $2)', [date_key, job]);
       }
 
       return {
