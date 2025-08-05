@@ -63,7 +63,36 @@ export async function handler(event, context) {
       };
     }
 
-    // ====== POST: Update job by date_key and index (used by frontend) ======
+    // ====== POST: Update job by ID (NEW - safe update) ======
+    if (method === 'POST' && body.type === 'updateById') {
+      const { id, job } = body;
+      if (!id) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: 'Job ID is required' })
+        };
+      }
+
+      const result = await client.query(
+        'UPDATE job_bookings SET job = $1 WHERE id = $2',
+        [job, id]
+      );
+
+      if (result.rowCount === 0) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ error: 'Job not found' })
+        };
+      }
+
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ success: true }),
+      };
+    }
+
+    // ====== POST: Update job by date_key and index (legacy - keep for now) ======
     if (method === 'POST' && body.type === 'update') {
       const { date_key, jobIndex, job } = body;
       const res = await client.query('SELECT id, job FROM job_bookings WHERE date_key = $1', [date_key]);
@@ -91,7 +120,7 @@ export async function handler(event, context) {
       };
     }
 
-    // ====== POST: Delete job by ID (NEW - prevents duplication) ======
+    // ====== POST: Delete job by ID ======
     if (method === 'POST' && body.type === 'deleteById') {
       const { id } = body;
       if (!id) {
@@ -116,7 +145,7 @@ export async function handler(event, context) {
       };
     }
 
-    // ====== POST: Legacy delete by date_key + index (keep for compatibility) ======
+    // ====== POST: Legacy delete by date_key + index ======
     if (method === 'POST' && body.type === 'delete') {
       const { date_key, jobIndex } = body;
       const res = await client.query('SELECT job FROM job_bookings WHERE date_key = $1', [date_key]);
